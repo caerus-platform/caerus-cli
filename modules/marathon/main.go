@@ -20,6 +20,7 @@ type DockerContainer struct {
 	Status  string
 	Image   string
 	Command string
+	Host    map[string]string         `json:"host"`
 }
 
 type LastTaskFailure struct {
@@ -69,8 +70,8 @@ type MarathonCallApps struct {
 	Apps []MarathonApp                `json:"apps"`
 }
 
-func fetchContainerByTask(host string, task MarathonTask) DockerContainer {
-	u, _ := url.Parse(fmt.Sprintf("%s/api/v1/marathon/%s/container", host, task.Id))
+func fetchContainerByTask(host string, taskId string) DockerContainer {
+	u, _ := url.Parse(fmt.Sprintf("%s/api/v1/marathon/%s/container", host, taskId))
 	r, _ := http.Get(u.String())
 	defer r.Body.Close()
 	container := DockerContainer{}
@@ -200,18 +201,20 @@ func Commands(host string) []cli.Command {
 							Action: func(c *cli.Context) {
 								id := c.Args().First()
 								app := fetchApp(host, id)
-								task := c.String("task")
-								if task == "" {
+								taskId := c.String("task")
+								if taskId == "" {
 									length := len(app.Tasks)
 									fmt.Println("task is empty, check if app has any task...", length)
 									if length > 0 {
 										task := app.Tasks[0]
 										fmt.Println("using", task.Id)
-										container := fetchContainerByTask(host, task)
+										container := fetchContainerByTask(host, task.Id)
 										docker.StreamLogs(task.Host, container.Id)
 									}
 								} else {
-									fmt.Println(app)
+									fmt.Println("not implemented yet.")
+									//container := fetchContainerByTask(host, taskId)
+									//docker.StreamLogs(container.Host, container.Id)
 								}
 							},
 						},
