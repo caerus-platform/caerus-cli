@@ -11,10 +11,27 @@ import (
 	"strconv"
 	"strings"
 	"bytes"
+	"../docker"
 )
 
+type DockerContainer struct {
+	Id      string
+	State   string
+	Status  string
+	Image   string
+	Command string
+}
+
+type LastTaskFailure struct {
+	Timestamp string                  `json:"timestamp"`
+	Message   string                  `json:"message"`
+}
+
 type MarathonTask struct {
-	Host string                       `json:"host"`
+	Id    string                      `json:"id"`
+	Host  string                      `json:"host"`
+	Ports []int64                     `json:"ports"`
+	State string                      `json:"state"`
 }
 
 type PortMapping struct {
@@ -23,8 +40,8 @@ type PortMapping struct {
 }
 
 type MarathonDocker struct {
-	Image string                      `json:"image"`
-	Ports []PortMapping               `json:"portMappings"`
+	Image        string               `json:"image"`
+	PortsMapping []PortMapping        `json:"portMappings"`
 }
 
 type MarathonContainer struct {
@@ -32,23 +49,33 @@ type MarathonContainer struct {
 }
 
 type MarathonApp struct {
-	Id          string                `json:"id"`
-	Instances   int64                 `json:"instances"`
-	Cpus        float64               `json:"cpus"`
-	Constraints [][]string            `json:"constraints"`
-	Labels      map[string]string     `json:"labels"`
-	MEM         int64                 `json:"mem"`
-	Container   MarathonContainer     `json:"container"`
-	Tasks       []MarathonTask        `json:"tasks"`
-	Env         map[string]string     `json:"env"`
+	Id              string            `json:"id"`
+	Instances       int64             `json:"instances"`
+	Cpus            float64           `json:"cpus"`
+	Constraints     [][]string        `json:"constraints"`
+	Labels          map[string]string `json:"labels"`
+	MEM             int64             `json:"mem"`
+	Container       MarathonContainer `json:"container"`
+	Tasks           []MarathonTask    `json:"tasks"`
+	Env             map[string]string `json:"env"`
+	LastTaskFailure LastTaskFailure   `json:"lastTaskFailure"`
 }
 
 type MarathonCallApp struct {
-	App MarathonApp                 `json:"app"`
+	App MarathonApp                   `json:"app"`
 }
 
 type MarathonCallApps struct {
-	Apps []MarathonApp              `json:"apps"`
+	Apps []MarathonApp                `json:"apps"`
+}
+
+func fetchContainerByTask(host string, task MarathonTask) DockerContainer {
+	u, _ := url.Parse(fmt.Sprintf("%s/api/v1/marathon/%s/container", host, task.Id))
+	r, _ := http.Get(u.String())
+	defer r.Body.Close()
+	container := DockerContainer{}
+	json.NewDecoder(r.Body).Decode(&container)
+	return container
 }
 
 func fetchApp(host string, id string) MarathonApp {
@@ -67,6 +94,12 @@ func fetchApps(host string) []MarathonApp {
 	apps := MarathonCallApps{}
 	json.NewDecoder(r.Body).Decode(&apps)
 	return apps.Apps
+}
+
+func renderTasks(tasks []MarathonTask) {
+	for _, task := range tasks {
+		fmt.Println(task)
+	}
 }
 
 func renderApp(app MarathonApp) {
@@ -100,13 +133,18 @@ func renderApp(app MarathonApp) {
 	}()})
 	table.Append([]string{"Labels", func() string {
 		var buffer bytes.Buffer
-		for _, portMapping := range app.Container.Docker.Ports {
+		for _, portMapping := range app.Container.Docker.PortsMapping {
 			buffer.WriteString(fmt.Sprintf("%s:%s\n",
 				portMapping.Protocol, strconv.FormatInt(portMapping.ContainerPort, 10)))
 		}
 		return buffer.String()
 	}()})
 	table.Render()
+
+	fmt.Println("----------------------------------")
+	renderTasks(app.Tasks)
+	fmt.Println("----------------------------------")
+	fmt.Println("Last failure:", app.LastTaskFailure)
 }
 
 func renderApps(apps []MarathonApp) {
@@ -154,15 +192,27 @@ func Commands(host string) []cli.Command {
 							Usage: "tail logs for docker",
 							Flags: []cli.Flag{
 								cli.StringFlag{
-									Name: "n",
-									Usage: "-n n, which docker. 0 is the first.",
-									Value: "0",
+									Name: "task",
+									Usage: "--task taskId, which task. default is the first.",
+									Value: "",
 								},
 							},
 							Action: func(c *cli.Context) {
-								//id := c.Args().First()
-								//app := fetchApp(host, id)
-								//index := c.Int("n")
+								id := c.Args().First()
+								app := fetchApp(host, id)
+								task := c.String("task")
+								if task == "" {
+									length := len(app.Tasks)
+									fmt.Println("task is empty, check if app has any task...", length)
+									if length > 0 {
+										task := app.Tasks[0]
+										fmt.Println("using", task.Id)
+										container := fetchContainerByTask(host, task)
+										docker.StreamLogs(task.Host, container.Id)
+									}
+								} else {
+									fmt.Println(app)
+								}
 							},
 						},
 					},
