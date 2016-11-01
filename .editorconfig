@@ -1,0 +1,27 @@
+# http://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+; NodeJS
+[*.{js,es6,ts,html,jade}]
+indent_style = space
+indent_size = 2
+
+; Markdown
+[*.md]
+trim_trailing_whitespace = false
+
+; Shell
+[*.sh]
+indent_style = tab
+
+; Golang
+[*.go]
+indent_style = tab
+indent_size = 4
