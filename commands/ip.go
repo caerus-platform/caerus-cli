@@ -1,4 +1,4 @@
-package ip
+package commands
 
 import (
 	"net/http"
@@ -19,7 +19,7 @@ type IPInfo struct {
 	Postal   string    `json:"postal"`
 }
 
-func Info(ip string) {
+func info(ip string) {
 	r, _ := http.Get("http://ipinfo.io/8.8.8.8/json")
 	defer r.Body.Close()
 	body, _ := ioutil.ReadAll(r.Body)
@@ -29,12 +29,13 @@ func Info(ip string) {
 	fmt.Println(ipInfo)
 }
 
-func Commands() []cli.Command {
+func IpCommands() []cli.Command {
 	return []cli.Command{
 		{
 			Name: "ip",
+			Usage: "get info about ip address",
 			Action: func(c *cli.Context) {
-				Info(c.Args().Get(0))
+				info(c.Args().Get(0))
 			},
 		},
 	}

@@ -1,4 +1,4 @@
-package docker
+package commands
 
 import (
 	"github.com/urfave/cli"
@@ -9,7 +9,7 @@ import (
 	"log"
 )
 
-func StreamLogs(host string, id string) {
+func streamLogs(host string, id string) {
 	u, _ := url.Parse(fmt.Sprintf(
 		"http://%s:2375/containers/%s/logs?follow=true&stderr=true&timestamps=true&stdout=true",
 		host, id))
@@ -22,7 +22,7 @@ func StreamLogs(host string, id string) {
 	}
 }
 
-func Commands() []cli.Command {
+func DockerCommands() []cli.Command {
 	return []cli.Command{
 		{
 			Name:        "docker",
@@ -41,7 +41,7 @@ func Commands() []cli.Command {
 					Action: func(c *cli.Context) {
 						id := c.Args().First()
 						host := c.GlobalString("host")
-						StreamLogs(host, id)
+						streamLogs(host, id)
 					},
 				},
 			},

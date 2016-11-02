@@ -1,4 +1,4 @@
-package marathon
+package commands
 
 import (
 	"github.com/urfave/cli"
@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"bytes"
-	"../docker"
+	"github.com/spf13/viper"
 )
 
 type DockerContainer struct {
@@ -162,7 +162,7 @@ func renderApps(apps []MarathonApp) {
 	table.Render()
 }
 
-func Commands(host string) []cli.Command {
+func MarathonCommands() []cli.Command {
 	return []cli.Command{
 		{
 			Name:        "marathon",
@@ -181,7 +181,7 @@ func Commands(host string) []cli.Command {
 					Action: func(c *cli.Context) error {
 						id := c.Args().First()
 						fmt.Println("app info:", id)
-						app := fetchApp(host, id)
+						app := fetchApp(viper.GetString(CAERUS_API), id)
 
 						renderApp(app)
 
@@ -200,7 +200,7 @@ func Commands(host string) []cli.Command {
 							},
 							Action: func(c *cli.Context) {
 								id := c.Args().First()
-								app := fetchApp(host, id)
+								app := fetchApp(viper.GetString(CAERUS_API), id)
 								taskId := c.String("task")
 								if taskId == "" {
 									length := len(app.Tasks)
@@ -208,8 +208,8 @@ func Commands(host string) []cli.Command {
 									if length > 0 {
 										task := app.Tasks[0]
 										fmt.Println("using", task.Id)
-										container := fetchContainerByTask(host, task.Id)
-										docker.StreamLogs(task.Host, container.Id)
+										container := fetchContainerByTask(viper.GetString(CAERUS_API), task.Id)
+										streamLogs(task.Host, container.Id)
 									}
 								} else {
 									fmt.Println("not implemented yet.")
@@ -234,7 +234,7 @@ func Commands(host string) []cli.Command {
 					},
 					Action: func(c *cli.Context) error {
 						fmt.Println("Display all apps...")
-						apps := fetchApps(host)
+						apps := fetchApps(viper.GetString(CAERUS_API))
 
 						renderApps(apps)
 
