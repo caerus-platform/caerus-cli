@@ -12,6 +12,7 @@ import (
 	"strings"
 	"bytes"
 	"github.com/spf13/viper"
+	"log"
 )
 
 type DockerContainer struct {
@@ -99,7 +100,7 @@ func fetchApps(host string) []MarathonApp {
 
 func renderTasks(tasks []MarathonTask) {
 	for _, task := range tasks {
-		fmt.Println(task)
+		log.Println(task)
 	}
 }
 
@@ -142,10 +143,10 @@ func renderApp(app MarathonApp) {
 	}()})
 	table.Render()
 
-	fmt.Println("----------------------------------")
+	log.Println("----------------------------------")
 	renderTasks(app.Tasks)
-	fmt.Println("----------------------------------")
-	fmt.Println("Last failure:", app.LastTaskFailure)
+	log.Println("----------------------------------")
+	log.Println("Last failure:", app.LastTaskFailure)
 }
 
 func renderApps(apps []MarathonApp) {
@@ -180,7 +181,7 @@ func MarathonCommands() []cli.Command {
 					},
 					Action: func(c *cli.Context) error {
 						id := c.Args().First()
-						fmt.Println("app info:", id)
+						log.Println("App info:", id)
 						app := fetchApp(viper.GetString(CAERUS_API), id)
 
 						renderApp(app)
@@ -204,15 +205,15 @@ func MarathonCommands() []cli.Command {
 								taskId := c.String("task")
 								if taskId == "" {
 									length := len(app.Tasks)
-									fmt.Println("task is empty, check if app has any task...", length)
+									log.Println("Task is empty, check if app has any task...", length)
 									if length > 0 {
 										task := app.Tasks[0]
-										fmt.Println("using", task.Id)
+										log.Println("using", task.Id)
 										container := fetchContainerByTask(viper.GetString(CAERUS_API), task.Id)
 										streamLogs(task.Host, container.Id)
 									}
 								} else {
-									fmt.Println("not implemented yet.")
+									log.Println("Not implemented yet.")
 									//container := fetchContainerByTask(host, taskId)
 									//docker.StreamLogs(container.Host, container.Id)
 								}
@@ -233,7 +234,7 @@ func MarathonCommands() []cli.Command {
 						},
 					},
 					Action: func(c *cli.Context) error {
-						fmt.Println("Display all apps...")
+						log.Println("Display all apps...")
 						apps := fetchApps(viper.GetString(CAERUS_API))
 
 						renderApps(apps)

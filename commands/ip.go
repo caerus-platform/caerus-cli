@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"io/ioutil"
 	"encoding/json"
-	"fmt"
+	"log"
 	"github.com/urfave/cli"
+	"fmt"
 )
 
 type IPInfo struct {
@@ -26,7 +27,7 @@ func info(ip string) {
 
 	ipInfo := IPInfo{}
 	json.Unmarshal([]byte(string(body)), &ipInfo)
-	fmt.Println(ipInfo)
+	log.Println(ipInfo)
 }
 
 func IpCommands() []cli.Command {

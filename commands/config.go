@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/spf13/viper"
-	"fmt"
+	"log"
 	"github.com/urfave/cli"
 )
 
@@ -25,8 +25,8 @@ func loadConfig() map[string]interface{} {
 	viper.AddConfigPath(".")
 	err := viper.ReadInConfig()
 	if err != nil {
-		fmt.Println(err)
-		fmt.Println("Using default configuration.\n")
+		log.Println(err)
+		log.Println("Use default configuration.\n")
 	}
 	return viper.AllSettings()
 }
@@ -38,7 +38,8 @@ func ConfigCommands() []cli.Command {
 			Aliases: []string{"c"},
 			Usage: "show config infomation",
 			Action: func(c *cli.Context) {
-				fmt.Println(viper.AllSettings())
+				log.Println(viper.AllSettings())
 			},
 		},
-	}}
+	}
+}

@@ -3,13 +3,13 @@ package main
 import (
 	"github.com/urfave/cli"
 	"os"
-	"fmt"
+	"log"
 	"./commands"
 )
 
 func main() {
 	cli.VersionPrinter = func(c *cli.Context) {
-		fmt.Printf("version=%s\n", c.App.Version)
+		log.Printf("version=%s\n", c.App.Version)
 	}
 
 	app := cli.NewApp()

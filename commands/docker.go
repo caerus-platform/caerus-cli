@@ -2,11 +2,11 @@ package commands
 
 import (
 	"github.com/urfave/cli"
-	"fmt"
+	"log"
 	"net/url"
 	"net/http"
 	"bufio"
-	"log"
+	"fmt"
 )
 
 func streamLogs(host string, id string) {
