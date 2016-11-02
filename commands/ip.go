@@ -20,7 +20,7 @@ type IPInfo struct {
 }
 
 func info(ip string) {
-	r, _ := http.Get("http://ipinfo.io/8.8.8.8/json")
+	r, _ := http.Get(fmt.Sprintf("http://ipinfo.io/%s/json", ip))
 	defer r.Body.Close()
 	body, _ := ioutil.ReadAll(r.Body)
 
