@@ -26,7 +26,7 @@ func loadConfig() map[string]interface{} {
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.Println(err)
-		log.Println("Use default configuration.\n")
+		log.Println("Use default configuration.")
 	}
 	return viper.AllSettings()
 }
