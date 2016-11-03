@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	log.SetPrefix("Caerus:\t")
 	cli.VersionPrinter = func(c *cli.Context) {
 		log.Printf("version=%s\n", c.App.Version)
 	}

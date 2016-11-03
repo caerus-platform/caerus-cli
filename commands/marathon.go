@@ -15,13 +15,17 @@ import (
 	"log"
 )
 
+type DockerContainerHost struct {
+	Ip string                         `json:"ip"`
+}
+
 type DockerContainer struct {
 	Id      string
 	State   string
 	Status  string
 	Image   string
 	Command string
-	Host    map[string]string         `json:"host"`
+	Host    DockerContainerHost       `json:"host"`
 }
 
 type LastTaskFailure struct {
@@ -61,6 +65,21 @@ type MarathonApp struct {
 	Tasks           []MarathonTask    `json:"tasks"`
 	Env             map[string]string `json:"env"`
 	LastTaskFailure LastTaskFailure   `json:"lastTaskFailure"`
+}
+
+func (app MarathonApp) containers() (containers []DockerContainer) {
+	length := len(app.Tasks)
+	containers = []DockerContainer{}
+	if length > 0 {
+		for _, task := range app.Tasks {
+			log.Println("Found", task.Id)
+			container := fetchContainerByTask(viper.GetString(CAERUS_API), task.Id)
+			containers = append(containers, container)
+		}
+	} else {
+		log.Println("Task is empty, check if app has any task...", length)
+	}
+	return
 }
 
 type MarathonCallApp struct {
@@ -175,6 +194,7 @@ func renderApps(apps []MarathonApp) {
 }
 
 func MarathonCommands() []cli.Command {
+	log.SetPrefix("Marathon:\t")
 	return []cli.Command{
 		{
 			Name:        "marathon",
@@ -230,6 +250,53 @@ func MarathonCommands() []cli.Command {
 								}
 							},
 						},
+					},
+				},
+				{
+					Name: "ssh",
+					Usage: "ssh to a marathon app, default is the first docker in tasks",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name: "command, c",
+							Usage: `-c "command", -c "bash"`,
+						},
+						cli.StringFlag{
+							Name: "port, p",
+							Usage: "--port 22, default is 22",
+							Value: "22",
+						},
+						cli.StringFlag{
+							Name: "private-key, key",
+							Usage: "--private-key ur/private/key",
+						},
+						cli.StringFlag{
+							Name: "user, u",
+							Usage: "--user root, default is root",
+							Value: "root",
+						},
+					},
+					Action: func(c *cli.Context) {
+						id := c.Args().First()
+						if id == "" {
+							log.Fatalln("container_id is needed")
+						}
+						cmd := c.String("command")
+						if cmd == "" {
+							log.Fatalln("command is needed")
+						}
+
+						port := c.String("port")
+						user := c.String("user")
+						key := c.String("key")
+						app := fetchApp(viper.GetString(CAERUS_API), id)
+						if containers := app.containers(); len(containers) > 0 {
+							container := containers[0]
+							cmd = fmt.Sprintf("docker exec -it %s %s", container.Id, cmd)
+							//log.Println(user, container.Host.Ip, port, key, cmd)
+							runCommand(user, container.Host.Ip, port, key, cmd)
+						} else {
+							log.Fatalln("No running tasks found.")
+						}
 					},
 				},
 				{

@@ -87,6 +87,7 @@ type ExecResize struct{}
 type ExecInspect struct{}
 
 func DockerCommands() []cli.Command {
+	log.SetPrefix("Docker:\t")
 	return []cli.Command{
 		{
 			Name:        "docker",

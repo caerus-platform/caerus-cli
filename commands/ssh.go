@@ -91,6 +91,7 @@ func runCommand(user string, host string, port string, key string, cmd string) {
 }
 
 func SshCommands() []cli.Command {
+	log.SetPrefix("SSH:\t")
 	return []cli.Command{
 		{
 			Name: "ssh",
