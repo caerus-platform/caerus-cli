@@ -12,7 +12,6 @@ import (
 	"strings"
 	"bytes"
 	"github.com/spf13/viper"
-	"log"
 )
 
 type DockerContainerHost struct {
@@ -72,12 +71,12 @@ func (app MarathonApp) containers() (containers []DockerContainer) {
 	containers = []DockerContainer{}
 	if length > 0 {
 		for _, task := range app.Tasks {
-			log.Println("Found", task.Id)
+			log.Debugf("Found", task.Id)
 			container := fetchContainerByTask(viper.GetString(CAERUS_API), task.Id)
 			containers = append(containers, container)
 		}
 	} else {
-		log.Println("Task is empty, check if app has any task...", length)
+		log.Debugf("Task is empty, check if app has any task...", length)
 	}
 	return
 }
@@ -129,7 +128,7 @@ func fetchApps(host string) []MarathonApp {
 
 func renderTasks(tasks []MarathonTask) {
 	for _, task := range tasks {
-		log.Println(task)
+		log.Debug(task)
 	}
 }
 
@@ -172,14 +171,14 @@ func renderApp(app MarathonApp) {
 	}()})
 	table.Render()
 
-	log.Println("----------------------------------")
+	log.Debugf("----------------------------------")
 	renderTasks(app.Tasks)
-	log.Println("----------------------------------")
-	log.Println("Last failure:", app.LastTaskFailure)
+	log.Debugf("----------------------------------")
+	log.Debugf("Last failure:", app.LastTaskFailure)
 }
 
 func renderApps(apps []MarathonApp) {
-	log.Println("Rendering table...")
+	log.Debugf("Rendering table...")
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"ID", "Image"})
 	table.SetFooter([]string{"Total", strconv.FormatInt(int64(len(apps)), 10)})
@@ -194,7 +193,6 @@ func renderApps(apps []MarathonApp) {
 }
 
 func MarathonCommands() []cli.Command {
-	log.SetPrefix("Marathon:\t")
 	return []cli.Command{
 		{
 			Name:        "marathon",
@@ -203,7 +201,7 @@ func MarathonCommands() []cli.Command {
 			Subcommands: []cli.Command{
 				{
 					Name:  "app",
-					Usage: "show app info, operate app",
+					Usage: "show app info and other operations like: restart, update image etc",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name: "restart, r",
@@ -212,44 +210,48 @@ func MarathonCommands() []cli.Command {
 					},
 					Action: func(c *cli.Context) error {
 						id := c.Args().First()
-						log.Println("App info:", id)
+						if id == "" {
+							log.Fatal("app_id is needed")
+						}
+						log.Debugf("App info:", id)
 						app := fetchApp(viper.GetString(CAERUS_API), id)
 
 						renderApp(app)
 
 						return nil
 					},
-					Subcommands: []cli.Command{
-						{
-							Name: "logs",
-							Usage: "tail logs for docker",
-							Flags: []cli.Flag{
-								cli.StringFlag{
-									Name: "task",
-									Usage: "--task taskId, which task. default is the first.",
-									Value: "",
-								},
-							},
-							Action: func(c *cli.Context) {
-								id := c.Args().First()
-								app := fetchApp(viper.GetString(CAERUS_API), id)
-								taskId := c.String("task")
-								if taskId == "" {
-									length := len(app.Tasks)
-									log.Println("Task is empty, check if app has any task...", length)
-									if length > 0 {
-										task := app.Tasks[0]
-										log.Println("using", task.Id)
-										container := fetchContainerByTask(viper.GetString(CAERUS_API), task.Id)
-										runStreamLogs(task.Host, container.Id)
-									}
-								} else {
-									log.Println("Not implemented yet.")
-									//container := fetchContainerByTask(host, taskId)
-									//docker.StreamLogs(container.Host, container.Id)
-								}
-							},
+				},
+				{
+					Name: "logs",
+					Usage: "tail logs for docker",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name: "task",
+							Usage: "--task taskId, which task. default is the first.",
+							Value: "",
 						},
+					},
+					Action: func(c *cli.Context) {
+						id := c.Args().First()
+						if id == "" {
+							log.Fatal("app_id is needed")
+						}
+						app := fetchApp(viper.GetString(CAERUS_API), id)
+						taskId := c.String("task")
+						if taskId == "" {
+							length := len(app.Tasks)
+							log.Debugf("Task is empty, check if app has any task...", length)
+							if length > 0 {
+								task := app.Tasks[0]
+								log.Debugf("using", task.Id)
+								container := fetchContainerByTask(viper.GetString(CAERUS_API), task.Id)
+								runStreamLogs(task.Host, container.Id)
+							}
+						} else {
+							log.Debugf("Not implemented yet.")
+							//container := fetchContainerByTask(host, taskId)
+							//docker.StreamLogs(container.Host, container.Id)
+						}
 					},
 				},
 				{
@@ -278,11 +280,11 @@ func MarathonCommands() []cli.Command {
 					Action: func(c *cli.Context) {
 						id := c.Args().First()
 						if id == "" {
-							log.Fatalln("container_id is needed")
+							log.Fatal("container_id is needed")
 						}
 						cmd := c.String("command")
 						if cmd == "" {
-							log.Fatalln("command is needed")
+							log.Fatal("command is needed")
 						}
 
 						port := c.String("port")
@@ -292,10 +294,10 @@ func MarathonCommands() []cli.Command {
 						if containers := app.containers(); len(containers) > 0 {
 							container := containers[0]
 							cmd = fmt.Sprintf("docker exec -it %s %s", container.Id, cmd)
-							//log.Println(user, container.Host.Ip, port, key, cmd)
+							//log.Debugf()(user, container.Host.Ip, port, key, cmd)
 							runCommand(user, container.Host.Ip, port, key, cmd)
 						} else {
-							log.Fatalln("No running tasks found.")
+							log.Fatal("No running tasks found.")
 						}
 					},
 				},
@@ -312,7 +314,7 @@ func MarathonCommands() []cli.Command {
 						},
 					},
 					Action: func(c *cli.Context) error {
-						log.Println("Display all apps...")
+						log.Debugf("Display all apps...")
 						apps := fetchApps(viper.GetString(CAERUS_API))
 
 						renderApps(apps)

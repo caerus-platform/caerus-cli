@@ -2,7 +2,6 @@ package commands
 
 import (
 	"github.com/urfave/cli"
-	"log"
 	"net/url"
 	"net/http"
 	"bufio"
@@ -20,7 +19,7 @@ func runStreamLogs(host string, id string) {
 	reader := bufio.NewReader(r.Body)
 	for line := []byte{0}; len(line) > 0; {
 		line, _, _ := reader.ReadLine()
-		log.Println(string(line))
+		log.Debugf(string(line))
 	}
 }
 
@@ -40,7 +39,7 @@ type ExecCreateResp struct {
 
 // TODO not working
 func runExecCreate(host string, id string, cmd []string) ExecCreateResp {
-	log.Println("Creating exec...")
+	log.Debugf("Creating exec...")
 	u, _ := url.Parse(fmt.Sprintf("http://%s:2375/containers/%s/exec", host, id))
 	body, _ := json.Marshal(ExecCreate{
 		AttachStdin: true,
@@ -51,13 +50,13 @@ func runExecCreate(host string, id string, cmd []string) ExecCreateResp {
 	})
 	r, err := http.Post(u.String(), "application/json", strings.NewReader(string(body)))
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	defer r.Body.Close()
 
 	exec := ExecCreateResp{}
 	json.NewDecoder(r.Body).Decode(&exec)
-	log.Println("Create exec id", exec.Id)
+	log.Debugf("Create exec id", exec.Id)
 	return exec
 }
 
@@ -68,7 +67,7 @@ type ExecStart struct {
 
 // TODO not working
 func runExecStart(host string, exec ExecCreateResp) {
-	log.Println("Starting exec...")
+	log.Debugf("Starting exec...")
 	u, _ := url.Parse(fmt.Sprintf("http://%s:2375/exec/%s/start", host, exec.Id))
 	body, _ := json.Marshal(ExecStart{
 		Detach: false,
@@ -76,7 +75,7 @@ func runExecStart(host string, exec ExecCreateResp) {
 	})
 	r, err := http.Post(u.String(), "application/json", strings.NewReader(string(body)))
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	defer r.Body.Close()
 	// TODO not implemented
@@ -87,7 +86,6 @@ type ExecResize struct{}
 type ExecInspect struct{}
 
 func DockerCommands() []cli.Command {
-	log.SetPrefix("Docker:\t")
 	return []cli.Command{
 		{
 			Name:        "docker",
@@ -135,22 +133,22 @@ func DockerCommands() []cli.Command {
 					Action: func(c *cli.Context) {
 						host := c.GlobalString("host")
 						if host == "" {
-							log.Fatalln("docker --host is needed")
+							log.Fatal("docker --host is needed")
 						}
 						id := c.Args().First()
 						if id == "" {
-							log.Fatalln("container_id is needed")
+							log.Fatal("container_id is needed")
 						}
 						cmd := c.String("command")
 						if cmd == "" {
-							log.Fatalln("command is needed")
+							log.Fatal("command is needed")
 						}
 
 						cmd = fmt.Sprintf("docker exec -it %s %s", id, cmd)
 						port := c.String("port")
 						user := c.String("user")
 						key := c.String("key")
-						//log.Println(user, port, key, cmd)
+						//log.Debugf(user, port, key, cmd)
 						runCommand(user, host, port, key, cmd)
 					},
 				},
@@ -160,11 +158,11 @@ func DockerCommands() []cli.Command {
 					Action: func(c *cli.Context) {
 						id := c.Args().First()
 						if id == "" {
-							log.Fatalln("container_id is needed")
+							log.Fatal("container_id is needed")
 						}
 						host := c.GlobalString("host")
 						if host == "" {
-							log.Fatalln("docker --host is needed")
+							log.Fatal("docker --host is needed")
 						}
 						exec := runExecCreate(host, id, []string{"ls"})
 						runExecStart(host, exec)

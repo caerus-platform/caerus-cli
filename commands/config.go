@@ -2,7 +2,6 @@ package commands
 
 import (
 	"github.com/spf13/viper"
-	"log"
 	"github.com/urfave/cli"
 )
 
@@ -11,7 +10,7 @@ const (
 	MARATHON_HOST = "marathon_host"
 )
 
-func Init() {
+func InitConfig() {
 	loadConfig()
 }
 
@@ -25,21 +24,19 @@ func loadConfig() map[string]interface{} {
 	viper.AddConfigPath(".")
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Println(err)
-		log.Println("Use default configuration.")
+		log.Noticef("%s, Use default configuration.", err)
 	}
 	return viper.AllSettings()
 }
 
 func ConfigCommands() []cli.Command {
-	log.SetPrefix("Config:\t")
 	return []cli.Command{
 		{
 			Name: "config",
 			Aliases: []string{"c"},
 			Usage: "show config infomation",
 			Action: func(c *cli.Context) {
-				log.Println(viper.AllSettings())
+				log.Debug(viper.AllSettings())
 			},
 		},
 	}

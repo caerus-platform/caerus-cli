@@ -15,7 +15,7 @@ func main() {
 
 	app := cli.NewApp()
 	app.Name = "Caerus Command Helper"
-	app.Version = "0.0.1.rc1"
+	app.Version = "0.0.2-rc.1"
 	app.Usage = "^_^"
 
 	app.Flags = []cli.Flag{
@@ -34,7 +34,8 @@ func main() {
 	app.Commands = append(app.Commands, commands.ConfigCommands()...)
 
 	app.Before = func(c *cli.Context) error {
-		commands.Init()
+		commands.InitLogger()
+		commands.InitConfig()
 		return nil
 	}
 

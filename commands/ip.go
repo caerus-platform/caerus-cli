@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"io/ioutil"
 	"encoding/json"
-	"log"
 	"github.com/urfave/cli"
 	"fmt"
 )
@@ -27,11 +26,10 @@ func info(ip string) {
 
 	ipInfo := IPInfo{}
 	json.Unmarshal([]byte(string(body)), &ipInfo)
-	log.Println(ipInfo)
+	log.Debug(ipInfo)
 }
 
 func IpCommands() []cli.Command {
-	log.SetPrefix("IP:\t")
 	return []cli.Command{
 		{
 			Name: "ip",

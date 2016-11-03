@@ -3,7 +3,6 @@ package commands
 import (
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
-	"log"
 	"os/user"
 	"github.com/urfave/cli"
 	"fmt"
@@ -46,21 +45,21 @@ func newSession(user string, host string, port string, keyFile string) (session 
 		return
 	}
 
-	log.Println("[x] - new session created.")
+	log.Debug("[x] - new session created.")
 	return
 }
 
 func runCommand(user string, host string, port string, key string, cmd string) {
 	session, err := newSession(user, host, port, key)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	defer session.Close()
 
 	fd := int(os.Stdin.Fd())
 	oldState, err := terminal.MakeRaw(fd)
 	if err != nil {
-		log.Panicln(err)
+		log.Panic(err)
 	}
 	defer terminal.Restore(fd, oldState)
 
@@ -71,7 +70,7 @@ func runCommand(user string, host string, port string, key string, cmd string) {
 
 	termWidth, termHeight, err := terminal.GetSize(fd)
 	if err != nil {
-		log.Panicln(err)
+		log.Panic(err)
 	}
 
 	// setup terminal modes
@@ -83,13 +82,12 @@ func runCommand(user string, host string, port string, key string, cmd string) {
 
 	// request pseudo terminal
 	if err := session.RequestPty("xterm-256color", termHeight, termWidth, modes); err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	session.Run(cmd)
 }
 
 func SshCommands() []cli.Command {
-	log.SetPrefix("SSH:\t")
 	return []cli.Command{
 		{
 			Name: "ssh",
