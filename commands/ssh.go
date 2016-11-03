@@ -11,10 +11,8 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-func KeyFile() (key ssh.Signer, err error) {
-	usr, _ := user.Current()
-	file := usr.HomeDir + "/.ssh/zhulux-staging"
-	buf, err := ioutil.ReadFile(file)
+func KeyFile(keyFile string) (key ssh.Signer, err error) {
+	buf, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		return
 	}
@@ -25,8 +23,8 @@ func KeyFile() (key ssh.Signer, err error) {
 	return
 }
 
-func newSession(user string, host string, port string) (session *ssh.Session, err error) {
-	singer, err := KeyFile()
+func newSession(user string, host string, port string, keyFile string) (session *ssh.Session, err error) {
+	singer, err := KeyFile(keyFile)
 	if err != nil {
 		return
 	}
@@ -53,7 +51,7 @@ func newSession(user string, host string, port string) (session *ssh.Session, er
 }
 
 func runCommand(user string, host string, port string, key string, cmd string) {
-	session, err := newSession(user, host, port)
+	session, err := newSession(user, host, port, key)
 	if err != nil {
 		log.Fatalln(err)
 	}
