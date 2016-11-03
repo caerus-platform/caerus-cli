@@ -31,6 +31,7 @@ func info(ip string) {
 }
 
 func IpCommands() []cli.Command {
+	log.SetPrefix("IP:\t")
 	return []cli.Command{
 		{
 			Name: "ip",

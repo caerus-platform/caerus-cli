@@ -32,6 +32,7 @@ func loadConfig() map[string]interface{} {
 }
 
 func ConfigCommands() []cli.Command {
+	log.SetPrefix("Config:\t")
 	return []cli.Command{
 		{
 			Name: "config",
