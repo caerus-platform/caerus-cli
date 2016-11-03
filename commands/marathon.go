@@ -90,9 +90,19 @@ func fetchApp(host string, id string) MarathonApp {
 }
 
 func fetchApps(host string) []MarathonApp {
-	u, _ := url.Parse(host + "/api/v1/marathon/apps")
-	r, _ := http.Get(u.String())
+	u, err := url.Parse(host + "/api/v1/marathon/apps")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	r, err := http.Get(u.String())
+	if err != nil {
+		os.Exit(1)
+		log.Panic(err)
+	}
+
 	defer r.Body.Close()
+
 	apps := MarathonCallApps{}
 	json.NewDecoder(r.Body).Decode(&apps)
 	return apps.Apps
@@ -150,6 +160,7 @@ func renderApp(app MarathonApp) {
 }
 
 func renderApps(apps []MarathonApp) {
+	log.Println("Rendering table...")
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"ID", "Image"})
 	table.SetFooter([]string{"Total", strconv.FormatInt(int64(len(apps)), 10)})
@@ -210,7 +221,7 @@ func MarathonCommands() []cli.Command {
 										task := app.Tasks[0]
 										log.Println("using", task.Id)
 										container := fetchContainerByTask(viper.GetString(CAERUS_API), task.Id)
-										streamLogs(task.Host, container.Id)
+										runStreamLogs(task.Host, container.Id)
 									}
 								} else {
 									log.Println("Not implemented yet.")

@@ -16,7 +16,7 @@ func Init() {
 }
 
 func loadConfig() map[string]interface{} {
-	viper.SetDefault(CAERUS_API, "http://localhost:9000")
+	viper.SetDefault(CAERUS_API, "http://api.center.caerus.x")
 	viper.SetDefault(MARATHON_HOST, "http://marathon.caerus.x")
 
 	viper.SetConfigName("config.yaml")
