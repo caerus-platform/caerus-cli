@@ -7,8 +7,39 @@ import (
 	"bufio"
 	"fmt"
 	"encoding/json"
-	"strings"
 )
+
+// DockerMount ...
+type DockerMount struct {
+	Source string
+}
+
+// DockerContainer ...
+type DockerContainer struct {
+	Command string
+	ID      string `json:"Id"`
+	Image   string
+	Mounts  []DockerMount
+	State   string
+	Status  string
+	Host    string `json:"-"`
+}
+
+func (container DockerContainer) setHost(host string) {
+	container.Host = host
+}
+
+// list docker containers for host
+func listContainers(host string) (containers []DockerContainer, err error) {
+	u, _ := url.Parse(fmt.Sprintf("http://%s:2375/containers/json?all=1", host))
+	r, err := http.Get(u.String())
+	defer Close(r.Body)
+	json.NewDecoder(r.Body).Decode(&containers)
+	for _, container := range containers {
+		container.setHost(host)
+	}
+	return
+}
 
 func runStreamLogs(host string, id string) {
 	u, _ := url.Parse(fmt.Sprintf(
@@ -21,70 +52,12 @@ func runStreamLogs(host string, id string) {
 	defer Close(r.Body)
 	reader := bufio.NewReader(r.Body)
 	for line := []byte{0}; len(line) > 0; {
-		line, _, _ := reader.ReadLine()
+		line, _, err := reader.ReadLine()
+		if err != nil {
+			log.Fatal(err)
+		}
 		log.Debugf(string(line))
 	}
-}
-
-// ExecCreate ...
-type ExecCreate struct {
-	AttachStdin  bool
-	AttachStdout bool
-	AttachStderr bool
-	Cmd          []string
-	DetachKeys   string
-	Privileged   bool
-	Tty          bool
-}
-
-// ExecCreateResp ...
-type ExecCreateResp struct {
-	ID string
-}
-
-// TODO not working
-func runExecCreate(host string, id string, cmd []string) ExecCreateResp {
-	log.Debugf("Creating exec...")
-	u, _ := url.Parse(fmt.Sprintf("http://%s:2375/containers/%s/exec", host, id))
-	body, _ := json.Marshal(ExecCreate{
-		AttachStdin: true,
-		AttachStdout: true,
-		AttachStderr: true,
-		DetachKeys: "ctrl-p,ctrl-q,ctrl-c",
-		Cmd: cmd,
-	})
-	r, err := http.Post(u.String(), "application/json", strings.NewReader(string(body)))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer Close(r.Body)
-
-	exec := ExecCreateResp{}
-	json.NewDecoder(r.Body).Decode(&exec)
-	log.Debugf("Create exec id", exec.ID)
-	return exec
-}
-
-// ExecStart ...
-type ExecStart struct {
-	Detach bool
-	Tty    bool
-}
-
-// TODO not working
-func runExecStart(host string, exec ExecCreateResp) {
-	log.Debugf("Starting exec...")
-	u, _ := url.Parse(fmt.Sprintf("http://%s:2375/exec/%s/start", host, exec.ID))
-	body, _ := json.Marshal(ExecStart{
-		Detach: false,
-		Tty: true,
-	})
-	r, err := http.Post(u.String(), "application/json", strings.NewReader(string(body)))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer Close(r.Body)
-	// TODO not implemented
 }
 
 // DockerCommands returns docker commands
@@ -153,22 +126,6 @@ func DockerCommands() []cli.Command {
 						key := c.String("key")
 						//log.Debugf(user, port, key, cmd)
 						runCommand(user, host, port, key, cmd)
-					},
-				},
-				{
-					Name: "cmd",
-					Usage: "run cmd",
-					Action: func(c *cli.Context) {
-						id := c.Args().First()
-						if id == "" {
-							log.Fatal("container_id is needed")
-						}
-						host := c.GlobalString("host")
-						if host == "" {
-							log.Fatal("docker --host is needed")
-						}
-						exec := runExecCreate(host, id, []string{"ls"})
-						runExecStart(host, exec)
 					},
 				},
 			},

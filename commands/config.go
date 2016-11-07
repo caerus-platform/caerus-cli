@@ -7,7 +7,7 @@ import (
 
 // define config variable name
 const (
-	CaerusAPI = "caerus_api"        // caerus config name
+	CaerusAPI = "caerus_api"        // Deprecated: caerus config name
 	MarathonHost = "marathon_host"  // marathon config name
 )
 

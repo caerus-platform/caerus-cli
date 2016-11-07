@@ -16,21 +16,6 @@ import (
 	"io"
 )
 
-// DockerContainerHost ...
-type DockerContainerHost struct {
-	IP string                         `json:"ip"`
-}
-
-// DockerContainer ...
-type DockerContainer struct {
-	ID      string
-	State   string
-	Status  string
-	Image   string
-	Command string
-	Host    DockerContainerHost       `json:"host"`
-}
-
 // LastTaskFailure ...
 type LastTaskFailure struct {
 	Timestamp string                  `json:"timestamp"`
@@ -89,7 +74,7 @@ func (app MarathonApp) containers() (containers []DockerContainer) {
 	if len(app.Tasks) > 0 {
 		for _, task := range app.Tasks {
 			log.Debugf("Found", task.ID)
-			container := fetchContainerByTask(viper.GetString(CaerusAPI), task.ID)
+			container := fetchContainerByTask(task)
 			containers = append(containers, container)
 		}
 	} else {
@@ -148,20 +133,32 @@ type MarathonCallApps struct {
 	Apps []MarathonApp                `json:"apps"`
 }
 
-func fetchContainerByTask(host string, taskID string) DockerContainer {
-	u, _ := url.Parse(fmt.Sprintf("%s/api/v1/marathon/%s/container", host, taskID))
-	r, err := http.Get(u.String())
+func fetchContainerByTask(task MarathonTask) (container DockerContainer) {
+	log.Debugf("Task is %s", task)
+	containers, err := listContainers(task.Host)
 	if err != nil {
 		log.Panic(err)
 	}
-	defer Close(r.Body)
-	container := DockerContainer{}
-	json.NewDecoder(r.Body).Decode(&container)
-	return container
+	if len(containers) == 0 {
+		log.Fatalf("No containers found.")
+	}
+
+	for index, c := range containers {
+		for _, mount := range c.Mounts {
+			if contain := strings.Contains(mount.Source, task.ID); contain == true {
+				log.Debugf("Found container is %s", containers[index])
+				container = containers[index]
+			}
+		}
+	}
+
+	return
 }
 
-func fetchApp(host string, id string) MarathonApp {
-	u, _ := url.Parse(fmt.Sprintf("%s/api/v1/marathon/app?id=%s", host, id))
+func fetchApp(id string) MarathonApp {
+	u, _ := url.Parse(fmt.Sprintf(
+		"%s/v2/apps/%s?embed=apps.tasks&embed=apps.deployments&embed=apps.counts&embed=apps.readiness",
+		viper.GetString(MarathonHost), id))
 	r, err := http.Get(u.String())
 	if err != nil {
 		log.Panic(err)
@@ -173,8 +170,8 @@ func fetchApp(host string, id string) MarathonApp {
 	return app.App
 }
 
-func fetchApps(host string) []MarathonApp {
-	u, _ := url.Parse(host + "/api/v1/marathon/apps")
+func fetchApps() []MarathonApp {
+	u, _ := url.Parse(viper.GetString(MarathonHost) + "/v2/apps?embed=apps.tasks&embed=apps.deployments&embed=apps.counts&embed=apps.readiness")
 	r, err := http.Get(u.String())
 	if err != nil {
 		log.Panic(err)
@@ -274,7 +271,7 @@ func MarathonCommands() []cli.Command {
 									log.Fatal("app_id is needed")
 								}
 								log.Debugf("App info: %s", id)
-								app := fetchApp(viper.GetString(CaerusAPI), id)
+								app := fetchApp(id)
 
 								renderApp(app)
 							},
@@ -296,7 +293,7 @@ func MarathonCommands() []cli.Command {
 								}
 								log.Debugf("App info: %s", id)
 
-								app := fetchApp(viper.GetString(CaerusAPI), id)
+								app := fetchApp(id)
 
 								app.restart(c.Bool("force"))
 							},
@@ -318,7 +315,7 @@ func MarathonCommands() []cli.Command {
 								}
 								log.Debugf("App info: %s", id)
 
-								app := fetchApp(viper.GetString(CaerusAPI), id)
+								app := fetchApp(id)
 
 								app.scale(c.Int("instances"))
 							},
@@ -348,7 +345,7 @@ func MarathonCommands() []cli.Command {
 									log.Fatal("--image is needed")
 								}
 
-								app := fetchApp(viper.GetString(CaerusAPI), id)
+								app := fetchApp(id)
 
 								app.updateImage(image, c.Bool("force"))
 							},
@@ -368,15 +365,15 @@ func MarathonCommands() []cli.Command {
 								if id == "" {
 									log.Fatal("app_id is needed")
 								}
-								app := fetchApp(viper.GetString(CaerusAPI), id)
+								app := fetchApp(id)
 								taskID := c.String("task")
 								if taskID == "" {
 									length := len(app.Tasks)
-									log.Debugf("Task is empty, check if app has any task...", length)
+									log.Debugf("Task is empty, check if app has any task...%d", length)
 									if length > 0 {
 										task := app.Tasks[0]
-										log.Debugf("using", task.ID)
-										container := fetchContainerByTask(viper.GetString(CaerusAPI), task.ID)
+										log.Debugf("using %s", task.ID)
+										container := fetchContainerByTask(task)
 										runStreamLogs(task.Host, container.ID)
 									}
 								} else {
@@ -424,13 +421,13 @@ func MarathonCommands() []cli.Command {
 						port := c.String("port")
 						user := c.String("user")
 						key := c.String("key")
-						app := fetchApp(viper.GetString(CaerusAPI), id)
+						app := fetchApp(id)
 
 						if containers := app.containers(); len(containers) > 0 {
 							container := containers[0]
 							cmd = fmt.Sprintf("docker exec -it %s %s", container.ID, cmd)
 							//log.Debugf()(user, container.Host.Ip, port, key, cmd)
-							runCommand(user, container.Host.IP, port, key, cmd)
+							runCommand(user, container.Host, port, key, cmd)
 						} else {
 							log.Fatal("No running tasks found.")
 						}
@@ -439,7 +436,6 @@ func MarathonCommands() []cli.Command {
 				{
 					Name:  "apps",
 					Usage: "list all apps.",
-					//[filter] - name::regex exp: marathon apps id::/caerus`,
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name: "env, e",
@@ -449,7 +445,7 @@ func MarathonCommands() []cli.Command {
 					},
 					Action: func(c *cli.Context) error {
 						log.Debugf("Display all apps...")
-						apps := fetchApps(viper.GetString(CaerusAPI))
+						apps := fetchApps()
 
 						renderApps(apps)
 
