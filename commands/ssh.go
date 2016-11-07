@@ -10,8 +10,8 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-func KeyFile(keyFile string) (key ssh.Signer, err error) {
-	buf, err := ioutil.ReadFile(keyFile)
+func keyFile(path string) (key ssh.Signer, err error) {
+	buf, err := ioutil.ReadFile(path)
 	if err != nil {
 		return
 	}
@@ -22,8 +22,8 @@ func KeyFile(keyFile string) (key ssh.Signer, err error) {
 	return
 }
 
-func newSession(user string, host string, port string, keyFile string) (session *ssh.Session, err error) {
-	singer, err := KeyFile(keyFile)
+func newSession(user string, host string, port string, path string) (session *ssh.Session, err error) {
+	singer, err := keyFile(path)
 	if err != nil {
 		return
 	}
@@ -87,7 +87,8 @@ func runCommand(user string, host string, port string, key string, cmd string) {
 	session.Run(cmd)
 }
 
-func SshCommands() []cli.Command {
+// SSHCommands returns ssh commands
+func SSHCommands() []cli.Command {
 	return []cli.Command{
 		{
 			Name: "ssh",

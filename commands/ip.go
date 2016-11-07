@@ -8,8 +8,9 @@ import (
 	"fmt"
 )
 
+// IPInfo ...
 type IPInfo struct {
-	Ip       string    `json:"ip"`
+	IP       string    `json:"ip"`
 	Hostname string    `json:"hostname"`
 	City     string    `json:"city"`
 	Region   string    `json:"region"`
@@ -21,7 +22,7 @@ type IPInfo struct {
 
 func info(ip string) {
 	r, _ := http.Get(fmt.Sprintf("http://ipinfo.io/%s/json", ip))
-	defer r.Body.Close()
+	defer Close(r.Body)
 	body, _ := ioutil.ReadAll(r.Body)
 
 	ipInfo := IPInfo{}
@@ -29,7 +30,8 @@ func info(ip string) {
 	log.Debug(ipInfo)
 }
 
-func IpCommands() []cli.Command {
+// IPCommands returns ip commands
+func IPCommands() []cli.Command {
 	return []cli.Command{
 		{
 			Name: "ip",

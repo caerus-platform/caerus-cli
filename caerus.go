@@ -18,20 +18,14 @@ func main() {
 	app.Version = "0.0.2-rc.1"
 	app.Usage = "^_^"
 
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name: "host, H",
-			Usage: "setup caerus api `HOST`",
-		},
-	}
-
 	app.Commands = []cli.Command{}
 
-	app.Commands = append(app.Commands, commands.IpCommands()...)
+	app.Commands = append(app.Commands, commands.IPCommands()...)
 	app.Commands = append(app.Commands, commands.DockerCommands()...)
 	app.Commands = append(app.Commands, commands.MarathonCommands()...)
-	app.Commands = append(app.Commands, commands.SshCommands()...)
+	app.Commands = append(app.Commands, commands.SSHCommands()...)
 	app.Commands = append(app.Commands, commands.ConfigCommands()...)
+	app.Commands = append(app.Commands, commands.UICommands()...)
 
 	app.Before = func(c *cli.Context) error {
 		commands.InitLogger()

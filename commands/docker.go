@@ -14,8 +14,11 @@ func runStreamLogs(host string, id string) {
 	u, _ := url.Parse(fmt.Sprintf(
 		"http://%s:2375/containers/%s/logs?follow=true&stderr=true&timestamps=true&stdout=true",
 		host, id))
-	r, _ := http.Get(u.String())
-	defer r.Body.Close()
+	r, err := http.Get(u.String())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer Close(r.Body)
 	reader := bufio.NewReader(r.Body)
 	for line := []byte{0}; len(line) > 0; {
 		line, _, _ := reader.ReadLine()
@@ -23,6 +26,7 @@ func runStreamLogs(host string, id string) {
 	}
 }
 
+// ExecCreate ...
 type ExecCreate struct {
 	AttachStdin  bool
 	AttachStdout bool
@@ -33,8 +37,9 @@ type ExecCreate struct {
 	Tty          bool
 }
 
+// ExecCreateResp ...
 type ExecCreateResp struct {
-	Id string
+	ID string
 }
 
 // TODO not working
@@ -52,14 +57,15 @@ func runExecCreate(host string, id string, cmd []string) ExecCreateResp {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer r.Body.Close()
+	defer Close(r.Body)
 
 	exec := ExecCreateResp{}
 	json.NewDecoder(r.Body).Decode(&exec)
-	log.Debugf("Create exec id", exec.Id)
+	log.Debugf("Create exec id", exec.ID)
 	return exec
 }
 
+// ExecStart ...
 type ExecStart struct {
 	Detach bool
 	Tty    bool
@@ -68,7 +74,7 @@ type ExecStart struct {
 // TODO not working
 func runExecStart(host string, exec ExecCreateResp) {
 	log.Debugf("Starting exec...")
-	u, _ := url.Parse(fmt.Sprintf("http://%s:2375/exec/%s/start", host, exec.Id))
+	u, _ := url.Parse(fmt.Sprintf("http://%s:2375/exec/%s/start", host, exec.ID))
 	body, _ := json.Marshal(ExecStart{
 		Detach: false,
 		Tty: true,
@@ -77,14 +83,11 @@ func runExecStart(host string, exec ExecCreateResp) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer r.Body.Close()
+	defer Close(r.Body)
 	// TODO not implemented
 }
 
-type ExecResize struct{}
-
-type ExecInspect struct{}
-
+// DockerCommands returns docker commands
 func DockerCommands() []cli.Command {
 	return []cli.Command{
 		{

@@ -5,18 +5,21 @@ import (
 	"github.com/urfave/cli"
 )
 
+// define config variable name
 const (
-	CAERUS_API = "caerus_api"
-	MARATHON_HOST = "marathon_host"
+	CaerusAPI = "caerus_api"        // caerus config name
+	MarathonHost = "marathon_host"  // marathon config name
 )
 
+// InitConfig used for init config from other place
 func InitConfig() {
 	loadConfig()
 }
 
+// setup default value and load config file
 func loadConfig() map[string]interface{} {
-	viper.SetDefault(CAERUS_API, "http://api.center.caerus.x")
-	viper.SetDefault(MARATHON_HOST, "http://marathon.caerus.x")
+	viper.SetDefault(CaerusAPI, "http://api.center.caerus.x")
+	viper.SetDefault(MarathonHost, "http://marathon.caerus.x")
 
 	viper.SetConfigName("config.yaml")
 	viper.AddConfigPath("/etc/caerus")
@@ -29,6 +32,7 @@ func loadConfig() map[string]interface{} {
 	return viper.AllSettings()
 }
 
+// ConfigCommands returns config commands
 func ConfigCommands() []cli.Command {
 	return []cli.Command{
 		{

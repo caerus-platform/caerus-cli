@@ -23,3 +23,12 @@ caerus-cli 是命令行工具，直接运行后会有相关的命令说明。
     ./caerus-cli m app logs /app/id
     # 在容器中运行 shell 命令
     ./caerus-cli m ssh /app/id --key /private/ssh/key/path -c "command"
+
+## Develop
+
+    go fmt ./... && gofmt -s -w . && \
+    go vet ./... && go get ./... && \
+    go test ./... && \
+    golint ./... && \
+    gocyclo -avg -over 15 . && \
+    errcheck ./...
