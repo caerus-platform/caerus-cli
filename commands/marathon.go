@@ -115,7 +115,7 @@ func (app MarathonApp) updateImage(image string, force bool) {
 	requestBody, _ := json.Marshal(app)
 	log.Debugf("try update  [%s]'s image to [%s]", app.ID, image)
 
-	putApp(u.String(), strings.NewReader(requestBody))
+	putApp(u.String(), strings.NewReader(string(requestBody)))
 }
 
 func (app MarathonApp) scale(instances int) {
