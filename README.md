@@ -15,12 +15,33 @@ caerus-cli 是命令行工具，直接运行后会有相关的命令说明。
 
 ### Marathon 相关命令
 
-    # 查看所有应用
+    # apps 查看所有应用
     ./caerus-cli m apps
-    # 查看相关应用详情
-    ./caerus-cli m app /app/id
-    # 查看相关应用日志
+    
+    # app info/i 查看相关应用详情
+    ./caerus-cli m app info /app/id
+    
+    # app logs 查看相关应用日志
     ./caerus-cli m app logs /app/id
+    
+    # app update/n 更新应用镜像
+    ./caerus-cli m app u /app/id --image /image/repo
+    
+    # app update/n 强制更新应用镜像
+    ./caerus-cli m app u /app/id --image /image/repo -f
+    
+    # app scale/s 停止应用
+    ./caerus-cli m app s /app/id -n 0
+    
+    # app restart/r 重启应用
+    ./caerus-cli m app r /app/id
+    
+    # app restart/r 强制重启应用
+    ./caerus-cli m app r /app/id -f
+    
+    # app scale/s 启动应用
+    ./caerus-cli m app s /app/id -n 1
+    
     # 在容器中运行 shell 命令
     ./caerus-cli m ssh /app/id --key /private/ssh/key/path -c "command"
 

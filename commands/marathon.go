@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"github.com/spf13/viper"
 	"io/ioutil"
+	"io"
 )
 
 // DockerContainerHost ...
@@ -46,19 +47,28 @@ type MarathonTask struct {
 
 // PortMapping ...
 type PortMapping struct {
-	Protocol      string              `json:"protocol"`
 	ContainerPort int64               `json:"containerPort"`
+	HostPort      int64               `json:"hostPort"`
+	ServicePort   int64               `json:"servicePort"`
+	Protocol      string              `json:"protocol"`
+	Labels        []string            `json:"labels"`
 }
 
 // MarathonDocker ...
 type MarathonDocker struct {
-	Image        string               `json:"image"`
-	PortsMapping []PortMapping        `json:"portMappings"`
+	Image          string             `json:"image"`
+	Network        string             `json:"network"`
+	Privileged     bool               `json:"privileged"`
+	Parameters     []string           `json:"parameters"`
+	ForcePullImage bool               `json:"forcePullImage"`
+	PortsMapping   []PortMapping      `json:"portMappings"`
 }
 
 // MarathonContainer ...
 type MarathonContainer struct {
-	Docker MarathonDocker             `json:"docker"`
+	Type    string                    `json:"type"`
+	Volumes []string                  `json:"volumes"`
+	Docker  MarathonDocker            `json:"docker"`
 }
 
 // MarathonApp ...
@@ -97,6 +107,35 @@ func (app MarathonApp) restart(force bool) {
 	defer Close(r.Body)
 	body, _ := ioutil.ReadAll(r.Body)
 	log.Debugf(string(body))
+}
+
+func (app MarathonApp) updateImage(image string, force bool) {
+	u, _ := url.Parse(fmt.Sprintf("%s/v2/apps/%s?force=%t", viper.GetString(MarathonHost), app.ID, force))
+	app.Container.Docker.Image = image
+	requestBody, _ := json.Marshal(app)
+	log.Debugf("try update  [%s]'s image to [%s]", app.ID, image)
+
+	putApp(u.String(), strings.NewReader(requestBody))
+}
+
+func (app MarathonApp) scale(instances int) {
+	u, _ := url.Parse(fmt.Sprintf("%s/v2/apps/%s", viper.GetString(MarathonHost), app.ID))
+	log.Debugf("try scale  [%s]'s image to [%d]", app.ID, instances)
+
+	requestBody := fmt.Sprintf(`{"instances": %d}`, instances)
+	putApp(u.String(), strings.NewReader(requestBody))
+}
+
+func putApp(url string, body io.Reader) {
+	client := &http.Client{}
+	request, _ := http.NewRequest("PUT", url, body)
+	r, err := client.Do(request)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer Close(r.Body)
+	resp, _ := ioutil.ReadAll(r.Body)
+	log.Debugf(string(resp))
 }
 
 // MarathonCallApp ...
@@ -262,39 +301,91 @@ func MarathonCommands() []cli.Command {
 								app.restart(c.Bool("force"))
 							},
 						},
-					},
-				},
-				{
-					Name: "logs",
-					Usage: "tail logs for docker",
-					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name: "task",
-							Usage: "--task taskId, which task. default is the first.",
-							Value: "",
+						{
+							Name: "scale",
+							Aliases: []string{"s"},
+							Usage: "scale app, set to 0 to stop app.",
+							Flags: []cli.Flag{
+								cli.IntFlag{
+									Name: "instances, n",
+									Usage: "--instances [0-9]+ default is 0",
+								},
+							},
+							Action: func(c *cli.Context) {
+								id := c.Args().First()
+								if id == "" {
+									log.Fatal("app_id is needed")
+								}
+								log.Debugf("App info: %s", id)
+
+								app := fetchApp(viper.GetString(CaerusAPI), id)
+
+								app.scale(c.Int("instances"))
+							},
 						},
-					},
-					Action: func(c *cli.Context) {
-						id := c.Args().First()
-						if id == "" {
-							log.Fatal("app_id is needed")
-						}
-						app := fetchApp(viper.GetString(CaerusAPI), id)
-						taskID := c.String("task")
-						if taskID == "" {
-							length := len(app.Tasks)
-							log.Debugf("Task is empty, check if app has any task...", length)
-							if length > 0 {
-								task := app.Tasks[0]
-								log.Debugf("using", task.ID)
-								container := fetchContainerByTask(viper.GetString(CaerusAPI), task.ID)
-								runStreamLogs(task.Host, container.ID)
-							}
-						} else {
-							log.Debugf("Not implemented yet.")
-							//container := fetchContainerByTask(host, taskId)
-							//docker.StreamLogs(container.Host, container.Id)
-						}
+						{
+							Name: "update",
+							Aliases: []string{"u"},
+							Usage: "update app",
+							Flags: []cli.Flag{
+								cli.BoolFlag{
+									Name: "force, f",
+									Usage: "--force true, default is false",
+								},
+								cli.StringFlag{
+									Name: "image",
+									Usage: "--image <image_name>",
+								},
+							},
+							Action: func(c *cli.Context) {
+								id := c.Args().First()
+								if id == "" {
+									log.Fatal("app_id is needed")
+								}
+								log.Debugf("App info: %s", id)
+								image := c.String("image")
+								if image == "" {
+									log.Fatal("--image is needed")
+								}
+
+								app := fetchApp(viper.GetString(CaerusAPI), id)
+
+								app.updateImage(image, c.Bool("force"))
+							},
+						},
+						{
+							Name: "logs",
+							Usage: "tail logs for docker",
+							Flags: []cli.Flag{
+								cli.StringFlag{
+									Name: "task",
+									Usage: "--task taskId, which task. default is the first.",
+									Value: "",
+								},
+							},
+							Action: func(c *cli.Context) {
+								id := c.Args().First()
+								if id == "" {
+									log.Fatal("app_id is needed")
+								}
+								app := fetchApp(viper.GetString(CaerusAPI), id)
+								taskID := c.String("task")
+								if taskID == "" {
+									length := len(app.Tasks)
+									log.Debugf("Task is empty, check if app has any task...", length)
+									if length > 0 {
+										task := app.Tasks[0]
+										log.Debugf("using", task.ID)
+										container := fetchContainerByTask(viper.GetString(CaerusAPI), task.ID)
+										runStreamLogs(task.Host, container.ID)
+									}
+								} else {
+									log.Debugf("Not implemented yet.")
+									//container := fetchContainerByTask(host, taskId)
+									//docker.StreamLogs(container.Host, container.Id)
+								}
+							},
+						},
 					},
 				},
 				{

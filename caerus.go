@@ -23,9 +23,9 @@ func main() {
 	app.Commands = append(app.Commands, commands.IPCommands()...)
 	app.Commands = append(app.Commands, commands.DockerCommands()...)
 	app.Commands = append(app.Commands, commands.MarathonCommands()...)
-	app.Commands = append(app.Commands, commands.SSHCommands()...)
-	app.Commands = append(app.Commands, commands.ConfigCommands()...)
-	app.Commands = append(app.Commands, commands.UICommands()...)
+	//app.Commands = append(app.Commands, commands.SSHCommands()...)
+	//app.Commands = append(app.Commands, commands.ConfigCommands()...)
+	//app.Commands = append(app.Commands, commands.UICommands()...)
 
 	app.Before = func(c *cli.Context) error {
 		commands.InitLogger()
