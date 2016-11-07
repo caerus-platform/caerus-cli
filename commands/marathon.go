@@ -12,6 +12,7 @@ import (
 	"strings"
 	"bytes"
 	"github.com/spf13/viper"
+	"io/ioutil"
 )
 
 // DockerContainerHost ...
@@ -87,6 +88,17 @@ func (app MarathonApp) containers() (containers []DockerContainer) {
 	return
 }
 
+func (app MarathonApp) restart(force bool) {
+	u, _ := url.Parse(fmt.Sprintf("%s/v2/apps/%s/restart?force=%t", viper.GetString(MarathonHost), app.ID, force))
+	r, err := http.Post(u.String(), "application/json", nil)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer Close(r.Body)
+	body, _ := ioutil.ReadAll(r.Body)
+	log.Debugf(string(body))
+}
+
 // MarathonCallApp ...
 type MarathonCallApp struct {
 	App MarathonApp                   `json:"app"`
@@ -99,7 +111,10 @@ type MarathonCallApps struct {
 
 func fetchContainerByTask(host string, taskID string) DockerContainer {
 	u, _ := url.Parse(fmt.Sprintf("%s/api/v1/marathon/%s/container", host, taskID))
-	r, _ := http.Get(u.String())
+	r, err := http.Get(u.String())
+	if err != nil {
+		log.Panic(err)
+	}
 	defer Close(r.Body)
 	container := DockerContainer{}
 	json.NewDecoder(r.Body).Decode(&container)
@@ -108,25 +123,23 @@ func fetchContainerByTask(host string, taskID string) DockerContainer {
 
 func fetchApp(host string, id string) MarathonApp {
 	u, _ := url.Parse(fmt.Sprintf("%s/api/v1/marathon/app?id=%s", host, id))
-	r, _ := http.Get(u.String())
+	r, err := http.Get(u.String())
+	if err != nil {
+		log.Panic(err)
+	}
 	defer Close(r.Body)
+
 	app := MarathonCallApp{}
 	json.NewDecoder(r.Body).Decode(&app)
 	return app.App
 }
 
 func fetchApps(host string) []MarathonApp {
-	u, err := url.Parse(host + "/api/v1/marathon/apps")
-	if err != nil {
-		log.Panic(err)
-	}
-
+	u, _ := url.Parse(host + "/api/v1/marathon/apps")
 	r, err := http.Get(u.String())
 	if err != nil {
-		os.Exit(1)
 		log.Panic(err)
 	}
-
 	defer Close(r.Body)
 
 	apps := MarathonCallApps{}
@@ -182,7 +195,7 @@ func renderApp(app MarathonApp) {
 	log.Debugf("----------------------------------")
 	renderTasks(app.Tasks)
 	log.Debugf("----------------------------------")
-	log.Debugf("Last failure:", app.LastTaskFailure)
+	log.Debugf("Last failure: %s", app.LastTaskFailure)
 }
 
 func renderApps(apps []MarathonApp) {
@@ -211,23 +224,44 @@ func MarathonCommands() []cli.Command {
 				{
 					Name:  "app",
 					Usage: "show app info and other operations like: restart, update image etc",
-					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name: "restart, r",
-							Usage: "restart app",
+					Subcommands: []cli.Command{
+						{
+							Name: "info",
+							Aliases: []string{"i"},
+							Usage: "show app info",
+							Action: func(c *cli.Context) {
+								id := c.Args().First()
+								if id == "" {
+									log.Fatal("app_id is needed")
+								}
+								log.Debugf("App info: %s", id)
+								app := fetchApp(viper.GetString(CaerusAPI), id)
+
+								renderApp(app)
+							},
 						},
-					},
-					Action: func(c *cli.Context) error {
-						id := c.Args().First()
-						if id == "" {
-							log.Fatal("app_id is needed")
-						}
-						log.Debugf("App info:", id)
-						app := fetchApp(viper.GetString(CaerusAPI), id)
+						{
+							Name: "restart",
+							Aliases: []string{"r"},
+							Usage: "restart app",
+							Flags: []cli.Flag{
+								cli.BoolFlag{
+									Name: "force, f",
+									Usage: "--force true, default is false",
+								},
+							},
+							Action: func(c *cli.Context) {
+								id := c.Args().First()
+								if id == "" {
+									log.Fatal("app_id is needed")
+								}
+								log.Debugf("App info: %s", id)
 
-						renderApp(app)
+								app := fetchApp(viper.GetString(CaerusAPI), id)
 
-						return nil
+								app.restart(c.Bool("force"))
+							},
+						},
 					},
 				},
 				{
