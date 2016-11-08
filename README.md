@@ -49,8 +49,10 @@ caerus-cli 是命令行工具，直接运行后会有相关的命令说明。
 
     # docker containers/c 查看所有容器
     ./caerus-cli d c docker-host
+    
     # docker logs 查看容器日志
     ./caerus-cli d logs docker-host container-id-or-name
+    
     # docker ssh 在容器中执行命令
     ./caerus-cli d ssh docker-host container-id-or-name -c "bash" --key ~/.ssh/id_rsa -u root
 
