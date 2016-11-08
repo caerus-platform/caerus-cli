@@ -103,8 +103,8 @@ func (app MarathonApp) updateImage(image string, force bool) {
 	putApp(u.String(), strings.NewReader(string(requestBody)))
 }
 
-func (app MarathonApp) scale(instances int) {
-	u, _ := url.Parse(fmt.Sprintf("%s/v2/apps/%s", viper.GetString(MarathonHost), app.ID))
+func (app MarathonApp) scale(instances int, force bool) {
+	u, _ := url.Parse(fmt.Sprintf("%s/v2/apps/%s?force=%t", viper.GetString(MarathonHost), app.ID, force))
 	log.Debugf("try scale  [%s]'s image to [%d]", app.ID, instances)
 
 	requestBody := fmt.Sprintf(`{"instances": %d}`, instances)
@@ -307,6 +307,10 @@ func MarathonCommands() []cli.Command {
 									Name: "instances, n",
 									Usage: "--instances [0-9]+ default is 0",
 								},
+								cli.BoolFlag{
+									Name: "force, f",
+									Usage: "--force true, default is false",
+								},
 							},
 							Action: func(c *cli.Context) {
 								id := c.Args().First()
@@ -317,7 +321,7 @@ func MarathonCommands() []cli.Command {
 
 								app := fetchApp(id)
 
-								app.scale(c.Int("instances"))
+								app.scale(c.Int("instances"), c.Bool("force"))
 							},
 						},
 						{

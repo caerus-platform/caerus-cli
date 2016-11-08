@@ -7,6 +7,10 @@ import (
 	"bufio"
 	"fmt"
 	"encoding/json"
+	"github.com/olekukonko/tablewriter"
+	"os"
+	"strconv"
+	"strings"
 )
 
 // DockerMount ...
@@ -20,6 +24,7 @@ type DockerContainer struct {
 	ID      string `json:"Id"`
 	Image   string
 	Mounts  []DockerMount
+	Names   []string
 	State   string
 	Status  string
 	Host    string `json:"-"`
@@ -56,8 +61,26 @@ func runStreamLogs(host string, id string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Debugf(string(line))
+		println(string(line))
 	}
+}
+
+func renderContainers(containers []DockerContainer) {
+	log.Debugf("Rendering table...")
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"ID", "Image", "State", "Status", "Names"})
+	table.SetFooter([]string{"", "", "", "Total", strconv.FormatInt(int64(len(containers)), 10)})
+
+	for _, container := range containers {
+		table.Append([]string{
+			container.ID[:12],
+			container.Image,
+			container.State,
+			container.Status,
+			strings.Join(container.Names, ","),
+		})
+	}
+	table.Render()
 }
 
 // DockerCommands returns docker commands
@@ -67,19 +90,26 @@ func DockerCommands() []cli.Command {
 			Name:        "docker",
 			Aliases:     []string{"d"},
 			Usage:       "options for docker",
-			Flags:       []cli.Flag{
-				cli.StringFlag{
-					Name: "host, H",
-					Usage: "host for app",
-				},
-			},
 			Subcommands: []cli.Command{
 				{
-					Name:   "logs",
-					Usage:  "logs id, logs for container id",
+					Name: "containers",
+					Aliases: []string{"c"},
+					Usage: "containers for host",
 					Action: func(c *cli.Context) {
-						id := c.Args().First()
-						host := c.GlobalString("host")
+						host := c.Args().First()
+						containers, err := listContainers(host)
+						if err != nil {
+							log.Fatalf("List containers for %s error: %s", host, err)
+						}
+						renderContainers(containers)
+					},
+				},
+				{
+					Name:   "logs",
+					Usage:  "host_id container_id, logs for container on host",
+					Action: func(c *cli.Context) {
+						host := c.Args().First()
+						id := c.Args().Get(1)
 						runStreamLogs(host, id)
 					},
 				},
@@ -107,11 +137,11 @@ func DockerCommands() []cli.Command {
 						},
 					},
 					Action: func(c *cli.Context) {
-						host := c.GlobalString("host")
+						host := c.Args().First()
 						if host == "" {
-							log.Fatal("docker --host is needed")
+							log.Fatal("docker_host is needed")
 						}
-						id := c.Args().First()
+						id := c.Args().Get(1)
 						if id == "" {
 							log.Fatal("container_id is needed")
 						}
