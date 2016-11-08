@@ -91,8 +91,8 @@ func runCommand(user string, host string, port string, key string, cmd string) {
 func SSHCommands() []cli.Command {
 	return []cli.Command{
 		{
-			Name: "ssh",
-			Usage: "ssh to address",
+			Name:   "ssh",
+			Usage:  "ssh to address",
 			Action: func(c *cli.Context) {
 				os.Exit(1) // not provided
 				usr, _ := user.Current()

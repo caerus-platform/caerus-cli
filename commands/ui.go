@@ -58,8 +58,8 @@ func demo() {
 func UICommands() []cli.Command {
 	return []cli.Command{
 		{
-			Name: "ui",
-			Usage: "graphic user interface",
+			Name:   "ui",
+			Usage:  "graphic user interface",
 			Action: func(c *cli.Context) {
 				demo()
 			},

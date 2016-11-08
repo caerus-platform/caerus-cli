@@ -34,8 +34,8 @@ func info(ip string) {
 func IPCommands() []cli.Command {
 	return []cli.Command{
 		{
-			Name: "ip",
-			Usage: "get info about ip address",
+			Name:   "ip",
+			Usage:  "get info about ip address",
 			Action: func(c *cli.Context) {
 				info(c.Args().Get(0))
 			},

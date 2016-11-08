@@ -95,7 +95,9 @@ func (app MarathonApp) restart(force bool) {
 }
 
 func (app MarathonApp) updateImage(image string, force bool) {
-	u, _ := url.Parse(fmt.Sprintf("%s/v2/apps/%s?force=%t", viper.GetString(MarathonHost), app.ID, force))
+	u, _ := url.Parse(fmt.Sprintf(
+		"%s/v2/apps/%s?force=%t",
+		viper.GetString(MarathonHost), app.ID, force))
 	app.Container.Docker.Image = image
 	requestBody, _ := json.Marshal(app)
 	log.Debugf("try update  [%s]'s image to [%s]", app.ID, image)
@@ -104,7 +106,9 @@ func (app MarathonApp) updateImage(image string, force bool) {
 }
 
 func (app MarathonApp) scale(instances int, force bool) {
-	u, _ := url.Parse(fmt.Sprintf("%s/v2/apps/%s?force=%t", viper.GetString(MarathonHost), app.ID, force))
+	u, _ := url.Parse(fmt.Sprintf(
+		"%s/v2/apps/%s?force=%t",
+		viper.GetString(MarathonHost), app.ID, force))
 	log.Debugf("try scale  [%s]'s image to [%d]", app.ID, instances)
 
 	requestBody := fmt.Sprintf(`{"instances": %d}`, instances)
@@ -171,7 +175,10 @@ func fetchApp(id string) MarathonApp {
 }
 
 func fetchApps() []MarathonApp {
-	u, _ := url.Parse(viper.GetString(MarathonHost) + "/v2/apps?embed=apps.tasks&embed=apps.deployments&embed=apps.counts&embed=apps.readiness")
+	u, _ := url.Parse(fmt.Sprintf(
+		"%s/v2/apps?embed=apps.tasks&embed=apps.deployments&embed=apps.counts&embed=apps.readiness",
+		viper.GetString(MarathonHost)))
+	log.Debugf(u.String())
 	r, err := http.Get(u.String())
 	if err != nil {
 		log.Panic(err)
@@ -256,6 +263,11 @@ func MarathonCommands() []cli.Command {
 			Name:        "marathon",
 			Aliases:     []string{"m"},
 			Usage:       "options for marathon",
+			Before:      func(c *cli.Context) error {
+				_, err := getConfig(MarathonHost)
+				failOnError(err, "")
+				return nil
+			},
 			Subcommands: []cli.Command{
 				{
 					Name:  "app",

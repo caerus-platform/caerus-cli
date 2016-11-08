@@ -13,7 +13,17 @@ caerus-cli 是命令行工具，直接运行后会有相关的命令说明。
 - marathon
 - docker
 
+### Config 相关命令
+
+    # init 新建配置文件
+    ./caerus-cli config init
+    
+    # info/i 打印配置信息
+    ./caerus-cli config info
+
 ### Marathon 相关命令
+
+> need to set marathon_host in ~/.caerus/config.yml
 
     # apps 查看所有应用
     ./caerus-cli m apps
@@ -30,9 +40,6 @@ caerus-cli 是命令行工具，直接运行后会有相关的命令说明。
     # app update/n 强制更新应用镜像
     ./caerus-cli m app u /app/id --image /image/repo -f
     
-    # app scale/s 停止应用
-    ./caerus-cli m app s /app/id -n 0
-    
     # app restart/r 重启应用
     ./caerus-cli m app r /app/id
     
@@ -41,6 +48,12 @@ caerus-cli 是命令行工具，直接运行后会有相关的命令说明。
     
     # app scale/s 启动应用
     ./caerus-cli m app s /app/id -n 1
+    
+    # app scale/s 停止应用
+    ./caerus-cli m app s /app/id -n 0
+    
+    # app scale/s 强制停止应用
+    ./caerus-cli m app s /app/id -n 0 -f
     
     # 在容器中运行 shell 命令
     ./caerus-cli m ssh /app/id --key /private/ssh/key/path -c "command"
@@ -55,6 +68,14 @@ caerus-cli 是命令行工具，直接运行后会有相关的命令说明。
     
     # docker ssh 在容器中执行命令
     ./caerus-cli d ssh docker-host container-id-or-name -c "bash" --key ~/.ssh/id_rsa -u root
+
+### RabbitMQ 相关命令
+
+> need to set marathon_host in ~/.caerus/config.yml
+
+    # subscribe/s 订阅, -d 表示 durable
+    ./caerus-cli mq s -x caerus.events -d -t topic "#"
+    ./caerus-cli mq s -x direct_logs -t direct "info"
 
 ## Develop
 

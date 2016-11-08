@@ -15,16 +15,17 @@ func main() {
 
 	app := cli.NewApp()
 	app.Name = "Caerus Command Helper"
-	app.Version = "v0.0.3-rc.2"
+	app.Version = "v0.0.4-rc.1"
 	app.Usage = "^_^"
 
 	app.Commands = []cli.Command{}
 
+	app.Commands = append(app.Commands, commands.RabbitMQCommands()...)
 	app.Commands = append(app.Commands, commands.IPCommands()...)
 	app.Commands = append(app.Commands, commands.DockerCommands()...)
 	app.Commands = append(app.Commands, commands.MarathonCommands()...)
 	//app.Commands = append(app.Commands, commands.SSHCommands()...)
-	//app.Commands = append(app.Commands, commands.ConfigCommands()...)
+	app.Commands = append(app.Commands, commands.ConfigCommands()...)
 	//app.Commands = append(app.Commands, commands.UICommands()...)
 
 	app.Before = func(c *cli.Context) error {
