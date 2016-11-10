@@ -39,11 +39,11 @@ func RabbitMQCommands() []cli.Command {
 					Action: func(c *cli.Context) {
 						conn, err := amqp.Dial(viper.GetString(MQHost))
 						failOnError(err, "Failed to connect to RabbitMQ")
-						defer Close(conn)
+						defer closeGracefully(conn)
 
 						ch, err := conn.Channel()
 						failOnError(err, "Failed to open a channel")
-						defer Close(ch)
+						defer closeGracefully(ch)
 
 						err = ch.ExchangeDeclare(
 							c.String("exchange"), // name

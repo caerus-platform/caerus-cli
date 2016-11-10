@@ -3,10 +3,10 @@ package commands
 import (
 	"io"
 	"fmt"
+	"os/user"
 )
 
-// Close gracefully close io.Closer
-func Close(c io.Closer) {
+func closeGracefully(c io.Closer) {
 	err := c.Close()
 	if err != nil {
 		log.Fatal(err)
@@ -18,4 +18,9 @@ func failOnError(err error, msg string) {
 		log.Fatalf("%s: %s", msg, err)
 		panic(fmt.Sprintf("%s: %s", msg, err))
 	}
+}
+
+func homeDir() string {
+	usr, _ := user.Current()
+	return usr.HomeDir
 }

@@ -89,7 +89,7 @@ func (app MarathonApp) restart(force bool) {
 	if err != nil {
 		log.Panic(err)
 	}
-	defer Close(r.Body)
+	defer closeGracefully(r.Body)
 	body, _ := ioutil.ReadAll(r.Body)
 	log.Debugf(string(body))
 }
@@ -122,7 +122,7 @@ func putApp(url string, body io.Reader) {
 	if err != nil {
 		log.Panic(err)
 	}
-	defer Close(r.Body)
+	defer closeGracefully(r.Body)
 	resp, _ := ioutil.ReadAll(r.Body)
 	log.Debugf(string(resp))
 }
@@ -167,7 +167,7 @@ func fetchApp(id string) MarathonApp {
 	if err != nil {
 		log.Panic(err)
 	}
-	defer Close(r.Body)
+	defer closeGracefully(r.Body)
 
 	app := MarathonCallApp{}
 	json.NewDecoder(r.Body).Decode(&app)
@@ -183,7 +183,7 @@ func fetchApps() []MarathonApp {
 	if err != nil {
 		log.Panic(err)
 	}
-	defer Close(r.Body)
+	defer closeGracefully(r.Body)
 
 	apps := MarathonCallApps{}
 	json.NewDecoder(r.Body).Decode(&apps)

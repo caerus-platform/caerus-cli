@@ -35,7 +35,7 @@ type DockerContainer struct {
 func listContainers(host string) (containers []DockerContainer, err error) {
 	u, _ := url.Parse(fmt.Sprintf("http://%s:2375/containers/json?all=1", host))
 	r, err := http.Get(u.String())
-	defer Close(r.Body)
+	defer closeGracefully(r.Body)
 	json.NewDecoder(r.Body).Decode(&containers)
 	for index, _ := range containers {
 		containers[index].Host = host
@@ -51,7 +51,7 @@ func runStreamLogs(host string, id string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer Close(r.Body)
+	defer closeGracefully(r.Body)
 	reader := bufio.NewReader(r.Body)
 	for line := []byte{0}; len(line) > 0; {
 		line, _, err := reader.ReadLine()
@@ -140,7 +140,7 @@ func DockerCommands() []cli.Command {
 						cli.StringFlag{
 							Name: "private-key, key",
 							Usage: "--private-key ur/private/key",
-							Value: "~/.ssh/id_rsa",
+							Value: homeDir() + "/.ssh/id_rsa",
 						},
 						cli.StringFlag{
 							Name: "user, u",
