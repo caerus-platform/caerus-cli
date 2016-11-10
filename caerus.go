@@ -15,7 +15,7 @@ func main() {
 
 	app := cli.NewApp()
 	app.Name = "Caerus Command Helper"
-	app.Version = "v0.0.4-rc.1"
+	app.Version = "v0.0.4-rc.2"
 	app.Usage = "^_^"
 
 	app.Commands = []cli.Command{}

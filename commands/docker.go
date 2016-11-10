@@ -25,13 +25,10 @@ type DockerContainer struct {
 	Image   string
 	Mounts  []DockerMount
 	Names   []string
+	Ports   []map[string]interface{}
 	State   string
 	Status  string
 	Host    string `json:"-"`
-}
-
-func (container DockerContainer) setHost(host string) {
-	container.Host = host
 }
 
 // list docker containers for host
@@ -40,8 +37,8 @@ func listContainers(host string) (containers []DockerContainer, err error) {
 	r, err := http.Get(u.String())
 	defer Close(r.Body)
 	json.NewDecoder(r.Body).Decode(&containers)
-	for _, container := range containers {
-		container.setHost(host)
+	for index, _ := range containers {
+		containers[index].Host = host
 	}
 	return
 }
@@ -63,6 +60,20 @@ func runStreamLogs(host string, id string) {
 		}
 		println(string(line))
 	}
+}
+
+func renderContainer(container DockerContainer) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.Append([]string{"ID", container.ID})
+	table.Append([]string{"Image", container.Image})
+	table.Append([]string{"Host", container.Host})
+	table.Append([]string{"Command", container.Command})
+	table.Append([]string{"Names", fmt.Sprintf("%s", container.Names)})
+	table.Append([]string{"Ports", fmt.Sprintf("%s", container.Ports)})
+	table.Append([]string{"State", container.State})
+	table.Append([]string{"Status", container.Status})
+	//table.Append([]string{"Mounts", fmt.Sprintf("%s", container.Mounts)})
+	table.Render()
 }
 
 func renderContainers(containers []DockerContainer) {

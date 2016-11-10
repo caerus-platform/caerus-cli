@@ -73,7 +73,7 @@ type MarathonApp struct {
 func (app MarathonApp) containers() (containers []DockerContainer) {
 	if len(app.Tasks) > 0 {
 		for _, task := range app.Tasks {
-			log.Debugf("Found", task.ID)
+			log.Debugf("Found [%s]", task.ID)
 			container := fetchContainerByTask(task)
 			containers = append(containers, container)
 		}
@@ -138,7 +138,7 @@ type MarathonCallApps struct {
 }
 
 func fetchContainerByTask(task MarathonTask) (container DockerContainer) {
-	log.Debugf("Task is %s", task)
+	log.Debugf("Task is [%s]", task)
 	containers, err := listContainers(task.Host)
 	if err != nil {
 		log.Panic(err)
@@ -150,7 +150,7 @@ func fetchContainerByTask(task MarathonTask) (container DockerContainer) {
 	for index, c := range containers {
 		for _, mount := range c.Mounts {
 			if contain := strings.Contains(mount.Source, task.ID); contain == true {
-				log.Debugf("Found container is %s", containers[index])
+				renderContainer(containers[index])
 				container = containers[index]
 			}
 		}
@@ -191,9 +191,11 @@ func fetchApps() []MarathonApp {
 }
 
 func renderTasks(tasks []MarathonTask) {
+	log.Debugf("----------------------------------")
 	for _, task := range tasks {
 		log.Debug(task)
 	}
+	log.Debugf("----------------------------------")
 }
 
 func renderApp(app MarathonApp) {
@@ -225,7 +227,7 @@ func renderApp(app MarathonApp) {
 		}
 		return buffer.String()
 	}()})
-	table.Append([]string{"Labels", func() string {
+	table.Append([]string{"Ports", func() string {
 		var buffer bytes.Buffer
 		for _, portMapping := range app.Container.Docker.PortsMapping {
 			buffer.WriteString(fmt.Sprintf("%s:%s\n",
@@ -235,9 +237,7 @@ func renderApp(app MarathonApp) {
 	}()})
 	table.Render()
 
-	log.Debugf("----------------------------------")
 	renderTasks(app.Tasks)
-	log.Debugf("----------------------------------")
 	log.Debugf("Last failure: %s", app.LastTaskFailure)
 }
 
@@ -442,7 +442,7 @@ func MarathonCommands() []cli.Command {
 						if containers := app.containers(); len(containers) > 0 {
 							container := containers[0]
 							cmd = fmt.Sprintf("docker exec -it %s %s", container.ID, cmd)
-							//log.Debugf()(user, container.Host.Ip, port, key, cmd)
+							log.Debugf("[%s] - [%s] - [%s] - [%s] - [%s]", user, container.Host, port, key, cmd)
 							runCommand(user, container.Host, port, key, cmd)
 						} else {
 							log.Fatal("No running tasks found.")
