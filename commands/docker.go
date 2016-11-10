@@ -140,6 +140,7 @@ func DockerCommands() []cli.Command {
 						cli.StringFlag{
 							Name: "private-key, key",
 							Usage: "--private-key ur/private/key",
+							Value: "~/.ssh/id_rsa",
 						},
 						cli.StringFlag{
 							Name: "user, u",
