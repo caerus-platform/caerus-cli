@@ -49,10 +49,16 @@ type MarathonDocker struct {
 	PortsMapping   []PortMapping      `json:"portMappings"`
 }
 
+type MarathonVolume struct {
+	ContainerPath string              `json:"containerPath"`
+	HostPath      string              `json:"hostPath"`
+	Mode          string              `json:"mode"`
+}
+
 // MarathonContainer ...
 type MarathonContainer struct {
 	Type    string                    `json:"type"`
-	Volumes []string                  `json:"volumes"`
+	Volumes []MarathonVolume          `json:"volumes"`
 	Docker  MarathonDocker            `json:"docker"`
 }
 
@@ -164,9 +170,7 @@ func fetchApp(id string) MarathonApp {
 		"%s/v2/apps/%s?embed=apps.tasks&embed=apps.deployments&embed=apps.counts&embed=apps.readiness",
 		viper.GetString(MarathonHost), id))
 	r, err := http.Get(u.String())
-	if err != nil {
-		log.Panic(err)
-	}
+	failOnError(err, "Fetch app info error!")
 	defer closeGracefully(r.Body)
 
 	app := MarathonCallApp{}
@@ -180,9 +184,7 @@ func fetchApps() []MarathonApp {
 		viper.GetString(MarathonHost)))
 	log.Debugf(u.String())
 	r, err := http.Get(u.String())
-	if err != nil {
-		log.Panic(err)
-	}
+	failOnError(err, "Fetch apps info error")
 	defer closeGracefully(r.Body)
 
 	apps := MarathonCallApps{}
@@ -205,13 +207,24 @@ func renderApp(app MarathonApp) {
 	table.Append([]string{"Env", func() string {
 		var buffer bytes.Buffer
 		for k, v := range app.Env {
-			buffer.WriteString(fmt.Sprintf("%s:%s\n", k, v))
+			buffer.WriteString(fmt.Sprintf("%s:%s\n", k, valueColor(v)))
 		}
 		return buffer.String()
 	}()})
 	table.Append([]string{"Instances", strconv.FormatInt(app.Instances, 10)})
 	table.Append([]string{"Cpus", strconv.FormatFloat(app.Cpus, 'f', 1, 64)})
 	table.Append([]string{"Mem", strconv.FormatInt(app.MEM, 10)})
+	table.Append([]string{"Volumes", func() string {
+		var buffer bytes.Buffer
+		for _, v := range app.Container.Volumes {
+			buffer.WriteString(fmt.Sprintf("%s:%s:%s\n",
+				v.ContainerPath,
+				valueColor(v.HostPath),
+				v.Mode,
+			))
+		}
+		return buffer.String()
+	}()})
 	table.Append([]string{"Constraints", func() string {
 		var buffer bytes.Buffer
 		for _, constraint := range app.Constraints {
@@ -223,7 +236,7 @@ func renderApp(app MarathonApp) {
 	table.Append([]string{"Labels", func() string {
 		var buffer bytes.Buffer
 		for k, v := range app.Labels {
-			buffer.WriteString(fmt.Sprintf("%s:%s\n", k, v))
+			buffer.WriteString(fmt.Sprintf("%s:%s\n", k, valueColor(v)))
 		}
 		return buffer.String()
 	}()})
@@ -231,7 +244,9 @@ func renderApp(app MarathonApp) {
 		var buffer bytes.Buffer
 		for _, portMapping := range app.Container.Docker.PortsMapping {
 			buffer.WriteString(fmt.Sprintf("%s:%s\n",
-				portMapping.Protocol, strconv.FormatInt(portMapping.ContainerPort, 10)))
+				portMapping.Protocol,
+				valueColor(strconv.FormatInt(portMapping.ContainerPort, 10)),
+			))
 		}
 		return buffer.String()
 	}()})
