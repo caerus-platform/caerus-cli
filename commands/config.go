@@ -14,7 +14,7 @@ import (
 // define config variable name
 const (
 	CaerusAPI = "caerus_api"        // Deprecated: caerus config
-	MarathonHost = "marathon_host"  // marathon config
+	MarathonUrl = "marathon_url"    // marathon config
 	MQHost = "mq_host"              // mq config
 	PrivateKey = "private_key"      // ssh private_key
 )
@@ -27,16 +27,16 @@ var configStr = `---
 # example: http://api.center.caerus.x
 caerus_api: {{ .caerus_api }}
 
-# Marathon API 地址
+# Marathon 地址
 # example: http://marathon.caerus.x
-marathon_host: {{ .marathon_host }}
+marathon_url: {{ .marathon_url }}
 
 # MQ 相关配置
 # example: amqp://username:password@caerus.x:5672
 mq_host: {{ .mq_host }}
 
-# SSH 相关配置
-private_key: ~/.ssh/id_rsa
+# SSH 相关配置，default is ~/.ssh/id_rsa
+private_key:
 `
 
 // InitConfig used for init config from other place
@@ -48,6 +48,10 @@ func InitConfig() {
 func loadConfig() map[string]interface{} {
 	viper.SetConfigType("yaml")
 	viper.SetConfigName("config")
+
+	keyPath := fmt.Sprintf("%s/.ssh/id_rsa", homeDir())
+	viper.SetDefault(PrivateKey, keyPath)
+
 	//viper.AddConfigPath("/etc/caerus")
 	viper.AddConfigPath("$HOME/.caerus")
 	viper.AddConfigPath(".")

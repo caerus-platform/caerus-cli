@@ -92,7 +92,7 @@ func (app MarathonApp) containers() (containers []DockerContainer) {
 }
 
 func (app MarathonApp) restart(force bool) {
-	u, _ := url.Parse(fmt.Sprintf("%s/v2/apps/%s/restart?force=%t", viper.GetString(MarathonHost), app.ID, force))
+	u, _ := url.Parse(fmt.Sprintf("%s/v2/apps/%s/restart?force=%t", viper.GetString(MarathonUrl), app.ID, force))
 	r, err := http.Post(u.String(), "application/json", nil)
 	if err != nil {
 		log.Panic(err)
@@ -105,7 +105,7 @@ func (app MarathonApp) restart(force bool) {
 func (app MarathonApp) updateImage(image string, force bool) {
 	u, _ := url.Parse(fmt.Sprintf(
 		"%s/v2/apps/%s?force=%t",
-		viper.GetString(MarathonHost), app.ID, force))
+		viper.GetString(MarathonUrl), app.ID, force))
 	app.Container.Docker.Image = image
 	requestBody, _ := json.Marshal(app)
 	log.Debugf("try update  [%s]'s image to [%s]", app.ID, image)
@@ -116,7 +116,7 @@ func (app MarathonApp) updateImage(image string, force bool) {
 func (app MarathonApp) scale(instances int, force bool) {
 	u, _ := url.Parse(fmt.Sprintf(
 		"%s/v2/apps/%s?force=%t",
-		viper.GetString(MarathonHost), app.ID, force))
+		viper.GetString(MarathonUrl), app.ID, force))
 	log.Debugf("try scale  [%s]'s image to [%d]", app.ID, instances)
 
 	requestBody := fmt.Sprintf(`{"instances": %d}`, instances)
@@ -170,7 +170,7 @@ func fetchContainerByTask(task MarathonTask) (container DockerContainer) {
 func fetchApp(id string) MarathonApp {
 	u, _ := url.Parse(fmt.Sprintf(
 		"%s/v2/apps/%s?embed=apps.tasks&embed=apps.deployments&embed=apps.counts&embed=apps.readiness",
-		viper.GetString(MarathonHost), id))
+		viper.GetString(MarathonUrl), id))
 	r, err := http.Get(u.String())
 	failOnError(err, "Fetch app info error!")
 	defer closeGracefully(r.Body)
@@ -183,7 +183,7 @@ func fetchApp(id string) MarathonApp {
 func fetchApps() []MarathonApp {
 	u, _ := url.Parse(fmt.Sprintf(
 		"%s/v2/apps?embed=apps.tasks&embed=apps.deployments&embed=apps.counts&embed=apps.readiness",
-		viper.GetString(MarathonHost)))
+		viper.GetString(MarathonUrl)))
 	//log.Debugf(u.String())
 	r, err := http.Get(u.String())
 	failOnError(err, "Fetch apps info error")
@@ -366,7 +366,7 @@ func MarathonCommands() []cli.Command {
 			Aliases:     []string{"m"},
 			Usage:       "options for marathon",
 			Before:      func(c *cli.Context) error {
-				_, err := getConfig(MarathonHost)
+				_, err := getConfig(MarathonUrl)
 				failOnError(err, "")
 				return nil
 			},
@@ -525,7 +525,8 @@ func MarathonCommands() []cli.Command {
 						},
 						cli.StringFlag{
 							Name: "private-key, key",
-							Usage: "--private-key ur/private/key",
+							Usage: "--private-key ur/private/key, " +
+								"default is ~/.ssh/id_rsa, you can update it in ~/.caerus/config.yml",
 						},
 						cli.StringFlag{
 							Name: "user, u",
@@ -546,12 +547,15 @@ func MarathonCommands() []cli.Command {
 						port := c.String("port")
 						user := c.String("user")
 						key := c.String("key")
+						if key == "" {
+							key = viper.GetString(PrivateKey)
+						}
 						app := fetchApp(id)
 
 						if containers := app.containers(); len(containers) > 0 {
 							container := containers[0]
 							cmd = fmt.Sprintf("docker exec -it %s %s", container.ID, cmd)
-							log.Debugf("[%s] - [%s] - [%s] - [%s] - [%s]", user, container.Host, port, key, cmd)
+							//log.Debugf("[%s] - [%s] - [%s] - [%s] - [%s]", user, container.Host, port, key, cmd)
 							runCommand(user, container.Host, port, key, cmd)
 						} else {
 							log.Fatal("No running tasks found.")
