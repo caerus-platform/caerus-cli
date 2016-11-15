@@ -16,6 +16,7 @@ const (
 	CaerusAPI = "caerus_api"        // Deprecated: caerus config
 	MarathonHost = "marathon_host"  // marathon config
 	MQHost = "mq_host"              // mq config
+	PrivateKey = "private_key"      // ssh private_key
 )
 
 var configStr = `---
@@ -23,13 +24,19 @@ var configStr = `---
 # BY Daniel Wei (danielwii0326@gmail.com)
 
 # Caerus API 地址
+# example: http://api.center.caerus.x
 caerus_api: {{ .caerus_api }}
 
 # Marathon API 地址
+# example: http://marathon.caerus.x
 marathon_host: {{ .marathon_host }}
 
 # MQ 相关配置
+# example: amqp://username:password@caerus.x:5672
 mq_host: {{ .mq_host }}
+
+# SSH 相关配置
+private_key: ~/.ssh/id_rsa
 `
 
 // InitConfig used for init config from other place

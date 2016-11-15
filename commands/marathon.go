@@ -14,6 +14,8 @@ import (
 	"github.com/spf13/viper"
 	"io/ioutil"
 	"io"
+	"github.com/emirpasic/gods/maps/hashmap"
+	"github.com/emirpasic/gods/lists/arraylist"
 )
 
 // LastTaskFailure ...
@@ -182,7 +184,7 @@ func fetchApps() []MarathonApp {
 	u, _ := url.Parse(fmt.Sprintf(
 		"%s/v2/apps?embed=apps.tasks&embed=apps.deployments&embed=apps.counts&embed=apps.readiness",
 		viper.GetString(MarathonHost)))
-	log.Debugf(u.String())
+	//log.Debugf(u.String())
 	r, err := http.Get(u.String())
 	failOnError(err, "Fetch apps info error")
 	defer closeGracefully(r.Body)
@@ -192,15 +194,76 @@ func fetchApps() []MarathonApp {
 	return apps.Apps
 }
 
+func renderFailure(failure LastTaskFailure) {
+	log.Debugf("Last failure:")
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetColWidth(terminalWidth())
+	table.Append([]string{"Timestamp", failure.Timestamp})
+	table.Append([]string{"Message", failure.Message})
+	table.Render()
+}
+
 func renderTasks(tasks []MarathonTask) {
-	log.Debugf("----------------------------------")
+	log.Debugf("Tasks:")
 	for _, task := range tasks {
 		log.Debug(task)
 	}
-	log.Debugf("----------------------------------")
+}
+
+func renderSites() {
+	log.Debugf("Rendering sites...")
+	apps := fetchApps()
+	groups := hashmap.New()
+
+	for _, app := range apps {
+		//log.Debugf("====================================")
+		//log.Debugf("Labels is %s", app.Labels)
+		groupName := app.Labels["HAPROXY_GROUP"]
+		//log.Debugf("Group is %s", groupName)
+		if groupName != "" {
+			group, found := groups.Get(groupName);
+			if !found {
+				//log.Debugf("Group [%s] is not exists, create one.", groupName)
+				groups.Put(groupName, arraylist.New())
+			}
+			groupList, ok := group.(*arraylist.List)
+			//log.Debugf("Group is [%s], OK? %t", groupName, ok)
+			if ok {
+				groupList.Add(app)
+			}
+		}
+	}
+	//log.Debugf("Results is %s", groups)
+
+	for _, groupName := range groups.Keys() {
+		table := tablewriter.NewWriter(os.Stdout)
+		group, _ := groups.Get(groupName)
+		groupList, _ := group.(*arraylist.List)
+		it := groupList.Iterator()
+		for it.Next() {
+			app := it.Value().(MarathonApp)
+			//log.Debugf("Group is [{%s}], app is [{}]", groupName, app.ID)
+			table.Append([]string{
+				groupName.(string),
+				coloredAppID(app),
+				func() string {
+					var buffer bytes.Buffer
+					for k, v := range app.Labels {
+						if k != "HAPROXY_GROUP" {
+							buffer.WriteString(fmt.Sprintf("%s:%s\n", k, valueColor(v)))
+						}
+					}
+					return buffer.String()
+				}(),
+			})
+		}
+		table.Render()
+	}
 }
 
 func renderApp(app MarathonApp) {
+	log.Debugf("Rendering app...")
+
 	table := tablewriter.NewWriter(os.Stdout)
 	table.Append([]string{"ID", app.ID})
 	table.Append([]string{"Image", app.Container.Docker.Image})
@@ -253,21 +316,45 @@ func renderApp(app MarathonApp) {
 	table.Render()
 
 	renderTasks(app.Tasks)
-	log.Debugf("Last failure: %s", app.LastTaskFailure)
+	renderFailure(app.LastTaskFailure)
+}
+
+func coloredAppID(app MarathonApp) (id string) {
+	id = shutdownColor(app.ID)
+	if app.Instances > 0 {
+		id = runningColor(app.ID)
+	}
+	return
+}
+
+func runningAppsCount(apps []MarathonApp) (count int) {
+	count = 0
+	for _, app := range apps {
+		if app.Instances > 0 {
+			count += 1
+		}
+	}
+	return
 }
 
 func renderApps(apps []MarathonApp) {
-	log.Debugf("Rendering table...")
+	log.Debugf("Rendering apps...")
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"ID", "Image"})
-	table.SetFooter([]string{"Total", strconv.FormatInt(int64(len(apps)), 10)})
+	table.SetHeader([]string{"ID", "Image", "Instances"})
 
 	for _, app := range apps {
 		table.Append([]string{
-			app.ID,
+			coloredAppID(app),
 			app.Container.Docker.Image,
+			fmt.Sprintf("%d", app.Instances),
 		})
 	}
+
+	table.SetFooter([]string{
+		"Total",
+		strconv.FormatInt(int64(len(apps)), 10),
+		fmt.Sprintf("Running: %d", runningAppsCount),
+	})
 	table.Render()
 }
 
@@ -414,6 +501,13 @@ func MarathonCommands() []cli.Command {
 								}
 							},
 						},
+					},
+				},
+				{
+					Name: "sites",
+					Usage: "show all sites, ports group by haproxy",
+					Action: func(c *cli.Context) {
+						renderSites()
 					},
 				},
 				{
